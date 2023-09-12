@@ -9,6 +9,7 @@
 *****************************************************************************/
 #include <stddef.h>
 #ifndef BR_UTIL
+#define BR_UTIL
 
 typedef struct {
     size_t size;
@@ -16,6 +17,6 @@ typedef struct {
 } BrBuffer;
 
 #define MAXLINE 256
-#define WARN(CODE) (printf(#CODE "\r\n"), CODE)
+#define WARN(CODE) (printf(__FILE__ ":%d " #CODE "\r\n", __LINE__), CODE)
 
 #endif // !BR_UTIL

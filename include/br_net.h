@@ -20,6 +20,8 @@
 #include "br_util.h"
 #include <openssl/ssl.h>
 
+#define BR_REQUEST_SIZE_ATTEMPT 10
+
 typedef enum {
     BR_PROTOCOL_GOPHER,
     BR_PROTOCOL_HTTP,
@@ -60,26 +62,22 @@ char* br_ip_from_uri(const char* hostname);
  * Creates a socket to connect to target URI. Returns the connection if no error occurs
  */
 BrConnection* br_connnection_new(BR_PROTOCOL protocol, const char* uri, int ssl_enabled);
-
+/**
+ * Performs a connection according to the given BrConnection,
+ * based on given informations.
+ */
 BR_NET_STATUS br_connect(BrConnection* c);
-BR_NET_STATUS br_connect_ctx(BrConnection* c, const char* packet, size_t packet_s);
-
 /**
- * Reads bytes from given socket with the size given and writes to the buffer
- * @c - Connection
- * @buffer - to read
- * @return - number of written bytes
+ * Sends a request that contains given buffer and saves it to the given BrConnection
  */
-int br_read(BrConnection* c, char* buffer, size_t buffer_s);
-
+BR_NET_STATUS br_request(BrConnection* c, const char* buffer, size_t buffer_s);
 /**
- * Writes bytes to given socket to be sent
- * @c - Connection
- * @buffer - to write
- * @return - number of written bytes
+ * Resolves the given BrConnection, closes the socket writes the received data to the
+ * buffer. Returns the new size of the buffer.
+ * @c - connection to resolve
+ * @buffer- buffer to write in to. It will be filled with the stored response
+ * @return size of the newly allocated buffer
  */
-int br_write(BrConnection* c, char* buffer, size_t buffer_s);
-
-BR_NET_STATUS br_resolve(BrConnection* c, char* buffer, size_t* buffer_s);
+size_t br_resolve(BrConnection* c, char* buffer);
 
 #endif
