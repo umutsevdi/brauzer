@@ -7,16 +7,10 @@
  * Description: Common functions and data structures for Brauzer
 
 *****************************************************************************/
+#pragma once
 #include <stddef.h>
-#ifndef BR_UTIL
-#define BR_UTIL
-
-typedef struct {
-    size_t size;
-    char* data;
-} BrBuffer;
+#include <stdio.h>
 
 #define MAXLINE 256
+#define PRINT(FMT, ARGS...) printf(__FILE__ #FMT "\r\n" ARGS)
 #define WARN(CODE) (printf(__FILE__ ":%d " #CODE "\r\n", __LINE__), CODE)
-
-#endif // !BR_UTIL
