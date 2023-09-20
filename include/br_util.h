@@ -14,3 +14,5 @@
 #define MAXLINE 256
 #define PRINT(FMT, ARGS...) printf(__FILE__ #FMT "\r\n" ARGS)
 #define WARN(CODE) (printf(__FILE__ ":%d " #CODE "\r\n", __LINE__), CODE)
+
+extern const int RequestTypePort[];

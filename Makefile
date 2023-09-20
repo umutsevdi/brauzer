@@ -29,20 +29,18 @@ test: $(BUILDDIR)/test
 # Rule to build the executable from object files
 $(BUILDDIR)/test: $(OBJS_TEST)
 	@mkdir -p $(BUILDDIR)
-	$(CC) $(CFLAGS) $^ -o $@
 # Rule to build the executable from object files
 $(BUILDDIR)/build: $(OBJS)
 	@mkdir -p $(BUILDDIR)
-	$(CC) $(CFLAGS) $^ -o $@
+	$(CC) $^ -o $@  $(CFLAGS)
 # Rule to build object files from source files
 $(OBJDIR)/%.o: $(SRCDIR)/%.c
 	echo step $@
 	@mkdir -p $(OBJDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
-# -o $@
 # Clean rule to remove object files and the output executable
 clean:
-	rm -rf $(OBJDIR) $(BUILDDIR)
+	rm -rf  $(BUILDDIR) $(OBJDIR)
 
 # Phony targets to prevent conflicts with file names
 .PHONY: all clean

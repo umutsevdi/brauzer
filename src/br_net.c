@@ -1,5 +1,8 @@
 #include "br_net.h"
 #include "../include/br_net.h"
+#include <openssl/err.h>
+#include <openssl/ssl.h>
+#include <stdio.h>
 #include <string.h>
 
 const int RequestTypePort[] = {
@@ -23,16 +26,17 @@ typedef struct __BR_CONNECTION {
     char* host;
 } BrConnection;
 
-static int __is_ip_address(const char* input, size_t input_s);
+static BR_NET_STATUS __setup_address(BrConnection* c, const char* uri);
+static int __is_ip_address(const char* input);
 static void __strip_colon(char* str);
 static char* __uri_from_ip(const char* ip);
 static char* __ip_from_uri(const char* hostname);
 
 /**
  * Tries to obtain the port from the URI and returns it.
- * If the URI does not contain port, it returns the protocol's port
+ * If the URI does not contain port, returns -1
  */
-static int __br_parse_port(BR_PROTOCOL protocol, const char* URI);
+static int __parse_port(BR_PROTOCOL protocol, const char* URI);
 /**
  * Attempts to connect to the target IP through SSL, returns
  * whether the attempt is successful or not.
@@ -63,24 +67,21 @@ static int __br_read(BrConnection* c, char* buffer, size_t buffer_s);
  */
 static int __br_write(BrConnection* c, char* buffer, size_t buffer_s);
 
-// TODO Memory leak here. Look up later Port number may exists anywhere. Its best if we remove it from here
 BrConnection* br_connection_new(BR_PROTOCOL protocol, const char* uri, int ssl_enabled)
 {
+    if (uri == NULL) {
+        WARN(BR_NET_ERROR_INVALID_URI_STRING);
+        return NULL;
+    }
+
     BrConnection* c = calloc(sizeof(BrConnection), 1);
     c->protocol = protocol;
     if (ssl_enabled)
         c->ssl.enabled = ssl_enabled > 0;
-    c->port = __br_parse_port(protocol, uri);
-    if (__is_ip_address(uri, strlen(uri))) {
-        const char* hostname = __uri_from_ip(uri);
-        memcpy(c->ip, uri, sizeof(c->ip));
-        c->host = strdup(hostname);
-    } else {
-        const char* ip = __ip_from_uri(uri);
-        memcpy(c->ip, ip, sizeof(c->ip));
-        char* hostname = strdup(uri);
-        __strip_colon(hostname);
-        uri;
+    c->port = __parse_port(protocol, uri);
+    if (__setup_address(c, uri)) {
+        free(c);
+        return NULL;
     }
     return c;
 }
@@ -92,18 +93,15 @@ BR_NET_STATUS br_connect(BrConnection* c)
         return WARN(BR_NET_ERROR_SOCKET_CREATION);
     }
     c->sockfd = sockfd;
-    BR_NET_STATUS ssl_ok = !__try_ssl(c);
     // Return to regular connection if SSL doesn't work
-    if (!ssl_ok) {
-        struct sockaddr_in address;
-        address.sin_family = AF_INET;
-        address.sin_port = htons(c->port);
-        address.sin_addr.s_addr = inet_addr(c->ip);
-        if (connect(sockfd, (struct sockaddr*)&address, sizeof(address)) != 0) {
-            return WARN(BR_NET_ERROR_CONNECTION_FAILED);
-        }
+    struct sockaddr_in address;
+    address.sin_family = AF_INET;
+    address.sin_port = htons(c->port);
+    address.sin_addr.s_addr = inet_addr(c->ip);
+    if (connect(sockfd, (struct sockaddr*)&address, sizeof(address)) != 0) {
+        return WARN(BR_NET_ERROR_CONNECTION_FAILED);
     }
-    return BR_NET_STATUS_OK;
+    return __try_ssl(c);
 }
 
 BR_NET_STATUS br_request(BrConnection* c, const char* buffer, size_t buffer_s)
@@ -144,7 +142,7 @@ size_t br_resolve(BrConnection* c, char** buffer)
     return c->resp_s;
 }
 
-static int __br_parse_port(BR_PROTOCOL protocol, const char* URI)
+static int __parse_port(BR_PROTOCOL protocol, const char* URI)
 {
     char* port_str;
     // Check if the given Ip Address
@@ -158,8 +156,7 @@ static int __br_parse_port(BR_PROTOCOL protocol, const char* URI)
             return p;
         }
     }
-    PRINT("PORT:%d", , RequestTypePort[protocol]);
-    return RequestTypePort[protocol];
+    return -1;
 }
 
 static int __try_ssl(BrConnection* c)
@@ -182,8 +179,10 @@ static int __try_ssl(BrConnection* c)
     }
 
     SSL_set_fd(c->ssl.ssl, c->sockfd);
-
-    if (SSL_connect(c->ssl.ssl) != 1) {
+    int r;
+    if ((r = SSL_connect(c->ssl.ssl)) != 1) {
+        SSL_get_error(c->ssl.ssl, r);
+        ERR_print_errors_fp(stderr);
         return WARN(BR_NET_ERROR_SSL_CONNECTION);
     }
     c->ssl.enabled = 1;
@@ -202,9 +201,9 @@ static int __br_write(BrConnection* c, char* buffer, size_t buffer_s)
                           : send(c->sockfd, buffer, buffer_s, 0);
 }
 
-static int __is_ip_address(const char* input, size_t input_s)
+static int __is_ip_address(const char* input)
 {
-    char* input_d = strndup(input, input_s);
+    char* input_d = strdup(input);
     int count = 0;
     char* token = strtok(input_d, ".");
     while (token != NULL) {
@@ -246,4 +245,36 @@ static char* __ip_from_uri(const char* hostname)
         return NULL;
     }
     return inet_ntoa(*((struct in_addr*)host_entry->h_addr_list[0]));
+}
+
+static BR_NET_STATUS __setup_address(BrConnection* c, const char* uri)
+{
+    // if port can not be obtained from the URI, fallback to the protocols
+    int port = __parse_port(c->protocol, uri);
+    char* uri_n = strdup(uri);
+    if (port != -1) {
+        c->port = port;
+        __strip_colon(uri_n);
+    } else {
+        c->port = RequestTypePort[c->protocol];
+    }
+    if (__is_ip_address(uri)) {
+        c->host = __uri_from_ip(uri);
+        memcpy(&c->ip, uri, 16);
+    } else {
+        c->host = uri_n;
+        char* ip = __ip_from_uri(c->host);
+        if (ip == NULL) {
+            free(uri_n);
+            return WARN(BR_NET_ERROR_IP_NOT_FOUND);
+        }
+        memcpy(&c->ip, ip, 16);
+    }
+    PRINT("%s %s %d", , c->host, c->ip, c->port);
+    return BR_NET_STATUS_OK;
+}
+
+void get_http_fields(BrConnection* c, char* buffer, size_t buffer_s)
+{
+    snprintf(buffer, buffer_s, "Host: %s\r\nAccept-Language: en\r\n\r\n", c->host);
 }

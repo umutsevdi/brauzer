@@ -32,6 +32,8 @@ typedef enum {
 extern const int RequestTypePort[];
 typedef enum {
     BR_NET_STATUS_OK,
+    BR_NET_ERROR_INVALID_URI_STRING,
+    BR_NET_ERROR_IP_NOT_FOUND,
     BR_NET_ERROR_URI_NOT_FOUND,
     BR_NET_ERROR_SOCKET_CREATION,
     BR_NET_ERROR_SSL_DISABLED,
@@ -66,3 +68,5 @@ BR_NET_STATUS br_request(BrConnection* c, const char* buffer, size_t buffer_s);
  * @return size of the newly allocated buffer
  */
 size_t br_resolve(BrConnection* c, char** buffer);
+
+void get_http_fields(BrConnection* c, char* buffer, size_t buffer_s);
