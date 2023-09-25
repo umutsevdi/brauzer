@@ -1,8 +1,5 @@
 #include "br_net.h"
 #include "../include/br_net.h"
-#include <openssl/err.h>
-#include <openssl/ssl.h>
-#include <stdio.h>
 #include <string.h>
 
 const int RequestTypePort[] = {
@@ -32,6 +29,20 @@ static void __strip_colon(char* str);
 static char* __uri_from_ip(const char* ip);
 static char* __ip_from_uri(const char* hostname);
 
+/**
+ * Tries to obtain the protocol from the URI, returns the protocol name
+ * while setting up the index to where protocol definition ends.
+ *
+ * @URI - to parse
+ * @start_addr - address to set where URI begins
+ * @returns - protocol type BR_PROTOCOL, BR_PROTOCOL_UNSUPPORTED,
+ * if the protocol is not recognized
+ *
+ * example:
+ * __capture_protocol("https://www.google.com", &addr); -> BR_PROTOCOL_HTTPS
+ * addr will be 9, because that's where the domain starts('w')
+ */
+static BR_PROTOCOL __capture_protocol(const char* uri, int* start_addr);
 /**
  * Tries to obtain the port from the URI and returns it.
  * If the URI does not contain port, returns -1
@@ -67,7 +78,7 @@ static int __br_read(BrConnection* c, char* buffer, size_t buffer_s);
  */
 static int __br_write(BrConnection* c, char* buffer, size_t buffer_s);
 
-BrConnection* br_connection_new(BR_PROTOCOL protocol, const char* uri, int ssl_enabled)
+BrConnection* br_connection_new(const char* uri)
 {
     if (uri == NULL) {
         WARN(BR_NET_ERROR_INVALID_URI_STRING);
@@ -75,15 +86,20 @@ BrConnection* br_connection_new(BR_PROTOCOL protocol, const char* uri, int ssl_e
     }
 
     BrConnection* c = calloc(sizeof(BrConnection), 1);
-    c->protocol = protocol;
-    if (ssl_enabled)
-        c->ssl.enabled = ssl_enabled > 0;
-    c->port = __parse_port(protocol, uri);
-    if (__setup_address(c, uri)) {
-        free(c);
-        return NULL;
+    int start_addr = 0;
+    c->protocol = __capture_protocol(uri, &start_addr);
+    if (c->protocol == BR_PROTOCOL_UNSUPPORTED) {
+        WARN(BR_NET_ERROR_INVALID_PROTOCOL);
+        goto br_connection_new_error;
+    }
+    c->port = __parse_port(c->protocol, uri + start_addr);
+    if (__setup_address(c, uri + start_addr)) {
+        goto br_connection_new_error;
     }
     return c;
+br_connection_new_error:
+    free(c);
+    return NULL;
 }
 
 BR_NET_STATUS br_connect(BrConnection* c)
@@ -141,6 +157,11 @@ size_t br_resolve(BrConnection* c, char** buffer)
     free(c->host);
     return c->resp_s;
 }
+void br_protocol_print(BrConnection* c)
+{
+    printf("{host:%s,ip: %s, port: %d, protocol: %d, ssl_enabled: %d}\n",
+        c->host, c->ip, c->port, c->protocol, c->ssl.enabled);
+}
 
 static int __parse_port(BR_PROTOCOL protocol, const char* URI)
 {
@@ -161,9 +182,9 @@ static int __parse_port(BR_PROTOCOL protocol, const char* URI)
 
 static int __try_ssl(BrConnection* c)
 {
+    c->ssl.enabled = 0;
     if (c->protocol == BR_PROTOCOL_HTTP)
         return WARN(BR_NET_ERROR_SSL_DISABLED);
-    c->ssl.enabled = 0;
     SSL_library_init();
     OpenSSL_add_all_algorithms();
     SSL_load_error_strings();
@@ -186,7 +207,7 @@ static int __try_ssl(BrConnection* c)
         return WARN(BR_NET_ERROR_SSL_CONNECTION);
     }
     c->ssl.enabled = 1;
-    return BR_NET_STATUS_OK;
+    return WARN(BR_NET_STATUS_SSL_ENABLED);
 }
 
 static int __br_read(BrConnection* c, char* buffer, size_t buffer_s)
@@ -276,5 +297,32 @@ static BR_NET_STATUS __setup_address(BrConnection* c, const char* uri)
 
 void get_http_fields(BrConnection* c, char* buffer, size_t buffer_s)
 {
-    snprintf(buffer, buffer_s, "Host: %s\r\nAccept-Language: en\r\n\r\n", c->host);
+    if (c->protocol != BR_PROTOCOL_HTTP && c->protocol != BR_PROTOCOL_HTTPS) {
+        return;
+    }
+    if (c->ssl.enabled) {
+        snprintf(buffer, buffer_s, "Host: %s\r\nAccept-Language: en\r\n\r\n", c->host);
+    } else {
+        snprintf(buffer, buffer_s, "Host: %s\r\nAccept-Language: en\r\n\r\n", c->host);
+    }
+}
+
+static BR_PROTOCOL __capture_protocol(const char* uri, int* start_addr)
+{
+    if (!strncmp("gemini", uri, 6)) {
+        // gemini://
+        *start_addr = 9;
+        return BR_PROTOCOL_GEMINI;
+    } else if (!strncmp("https", uri, 5)) {
+        // https://
+        *start_addr = 8;
+        return BR_PROTOCOL_HTTPS;
+    } else if (!strncmp("http", uri, 4)) {
+        *start_addr = 7;
+        return BR_PROTOCOL_HTTP;
+    } else if (!strncmp("gopher", uri, 6)) {
+        *start_addr = 9;
+        return BR_PROTOCOL_GOPHER;
+    }
+    return BR_PROTOCOL_UNSUPPORTED;
 }
