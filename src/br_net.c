@@ -1,5 +1,6 @@
 #include "br_net.h"
 #include "../include/br_net.h"
+#include "br_util.h"
 #include <string.h>
 
 const int RequestTypePort[] = {
@@ -295,16 +296,24 @@ static BR_NET_STATUS __setup_address(BrConnection* c, const char* uri)
     return BR_NET_STATUS_OK;
 }
 
+#define _BR_VERSION "0.9"
+#define HEADER_ACCEPT_LANGUAGE "Accept-Language: en-US,en;q=0.9\r\n"
+#define HEADER_CONNECTION "Connection: keep-alive\r\n"
+#define HEADER_ACCEPT "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\n"
+
 void get_http_fields(BrConnection* c, char* buffer, size_t buffer_s)
 {
     if (c->protocol != BR_PROTOCOL_HTTP && c->protocol != BR_PROTOCOL_HTTPS) {
         return;
     }
-    if (c->ssl.enabled) {
-        snprintf(buffer, buffer_s, "Host: %s\r\nAccept-Language: en\r\n\r\n", c->host);
-    } else {
-        snprintf(buffer, buffer_s, "Host: %s\r\nAccept-Language: en\r\n\r\n", c->host);
-    }
+    char u_agent[4096];
+
+    char os[1024];
+    get_os(os, 1024);
+    snprintf(u_agent, sizeof(u_agent),
+        "User-Agent: Mozilla/5.0 (%s) Gecko/20100101 Brauzer/%s\r\n",
+        os, _BR_VERSION);
+    snprintf(buffer, buffer_s, "Host: %s\r\n" HEADER_ACCEPT HEADER_ACCEPT_LANGUAGE HEADER_CONNECTION "%s\r\n", c->host, u_agent);
 }
 
 static BR_PROTOCOL __capture_protocol(const char* uri, int* start_addr)

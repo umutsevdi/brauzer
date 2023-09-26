@@ -16,3 +16,9 @@
 #define WARN(CODE) (fprintf(stderr, __FILE__ ":%d " #CODE "\r\n", __LINE__), CODE)
 
 extern const int RequestTypePort[];
+
+/**
+ * Writes the browser agent information
+ * to the given buffer
+ */
+void get_os(char* os, size_t os_s);

@@ -9,13 +9,13 @@ int main(int argc, char* argv[])
     }
     br_protocol_print(c);
     br_connect(c);
-    char msg[255];
-    int written = snprintf(msg, 255, "GET /%s HTTP/1.1\r\n", argv[2]);
+    char msg[4096];
+    int written = snprintf(msg, 4096, "GET /%s HTTP/1.1\r\n", argv[2]);
     //        snprintf(msg, 255, "gemini://%s/%s\r\n", argv[1], argv[2]);
 
-    get_http_fields(c, msg + written, 255 - written);
+    get_http_fields(c, msg + written, 4096 - written);
     PRINT("REQUEST:%s", , msg);
-    br_request(c, msg, strnlen(msg, 255));
+    br_request(c, msg, strnlen(msg, 4096));
     char* str;
     size_t bytes = br_resolve(c, &str);
     printf("RESULT[%lu]:%s\n", bytes, str);
