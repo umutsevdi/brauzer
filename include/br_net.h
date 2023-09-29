@@ -50,25 +50,24 @@ typedef enum {
 typedef struct __BR_CONNECTION BrConnection;
 
 /**
- * Creates a socket to connect to target URI. Returns the connection if no error
- * occurs
+ * Creates a socket to connect to the target URI. Returns the connection if there
+ * is no error
  */
 BrConnection* br_connection_new(const char* uri);
 /**
- * Performs a connection according to the given BrConnection spesification,
- * based on given information.
+ * Performs a connection according to the given BrConnection specification
  */
 BR_NET_STATUS br_connect(BrConnection* c);
 /**
- * Sends a request that contains given buffer and stores the response
+ * Sends a request that contains the given buffer and stores the response
  */
 BR_NET_STATUS br_request(BrConnection* c, const char* buffer, size_t buffer_s);
 /**
- * Resolves the given BrConnection, writes the received data to the
+ * Resolves the given BrConnection, and writes the received data to the
  * buffer. Returns the new size of the buffer. If keep is set to false,
  * closes the connection
  * @c - connection to resolve
- * @buffer - buffer to write in to. It will be filled with the stored response
+ * @buffer - buffer to write into. It will be filled with the stored response
  * @keep - whether to keep the connection alive or not
  * @return size of the newly allocated buffer
  */
@@ -77,7 +76,7 @@ size_t br_resolve(BrConnection* c, char** buffer, bool keep);
 /**
  * Appends the given HTTP Connection, fills the required headers
  * @buffer - buffer to append
- * @buffer_s - size of the buffer
+ * @buffer_s - the size of the buffer
  * @keep - whether to keep the connection alive or not
  */
 void get_http_fields(BrConnection* c, char* buffer, size_t buffer_s, bool keep);
