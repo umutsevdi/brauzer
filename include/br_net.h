@@ -12,8 +12,6 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -23,7 +21,7 @@
 
 #define BR_REQUEST_SIZE_ATTEMPT 10
 
-typedef enum {
+typedef enum BR_NET_PROTOCOL {
     BR_PROTOCOL_GOPHER,
     BR_PROTOCOL_GEMINI,
     BR_PROTOCOL_HTTP,
@@ -71,8 +69,10 @@ BR_NET_STATUS br_request(BrConnection* c, const char* buffer, size_t buffer_s);
  * @buffer- buffer to write in to. It will be filled with the stored response
  * @return size of the newly allocated buffer
  */
-size_t br_resolve(BrConnection* c, char** buffer);
+size_t br_resolve(BrConnection* c, char** buffer, bool should_close);
 
-void get_http_fields(BrConnection* c, char* buffer, size_t buffer_s);
+void get_http_fields(BrConnection* c, char* buffer, size_t buffer_s, bool should_close);
 
 void br_protocol_print(BrConnection* c);
+
+BR_PROTOCOL br_protocol(BrConnection* c);

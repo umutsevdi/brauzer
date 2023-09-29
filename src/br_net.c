@@ -1,7 +1,10 @@
 #include "br_net.h"
 #include "../include/br_net.h"
 #include "br_util.h"
+#include <stdlib.h>
 #include <string.h>
+
+#define PACKET_SIZE 4096
 
 const int RequestTypePort[] = {
     70, 1965, 80, 443
@@ -93,7 +96,6 @@ BrConnection* br_connection_new(const char* uri)
         WARN(BR_NET_ERROR_INVALID_PROTOCOL);
         goto br_connection_new_error;
     }
-    c->port = __parse_port(c->protocol, uri + start_addr);
     if (__setup_address(c, uri + start_addr)) {
         goto br_connection_new_error;
     }
@@ -124,39 +126,50 @@ BR_NET_STATUS br_connect(BrConnection* c)
 BR_NET_STATUS br_request(BrConnection* c, const char* buffer, size_t buffer_s)
 {
     int attempt = BR_REQUEST_SIZE_ATTEMPT;
-    size_t written = 0;
-    char packet[4096];
+    size_t total_w = 0;
+    size_t frame_w;
+    char frame[PACKET_SIZE];
     do {
-        memcpy(packet, &buffer[written], 4096);
-        int bytes_written = __br_write(c, packet, 4096);
-        written += bytes_written;
-    } while (written < buffer_s && attempt-- > 0);
-    memset(packet, 0, 4096);
-    int bytes_received;
-    while ((bytes_received = __br_read(c, packet, 4096)) > 0) {
-        packet[bytes_received] = '\0';
-        char* con_mem = malloc(c->resp_s + bytes_received);
-        if (c->resp_s) {
-            memcpy(con_mem, c->resp, c->resp_s);
+        frame_w = buffer_s < PACKET_SIZE ? buffer_s : PACKET_SIZE;
+        memcpy(frame, &buffer[total_w], frame_w);
+        int bytes_w = __br_write(c, frame, frame_w);
+        total_w += bytes_w;
+    } while (total_w < buffer_s && attempt-- > 0);
+    memset(frame, 0, 4096);
+    int frame_r = 0;
+    bool eof = false;
+    while (!eof && (frame_r = __br_read(c, frame, PACKET_SIZE)) > 0) {
+        if (frame_r < PACKET_SIZE) {
+            eof = true;
         }
-        memcpy(&con_mem[c->resp_s], packet, bytes_received);
+        frame[frame_r] = '\0';
+        char* total_resp = malloc(c->resp_s + frame_r);
+        if (c->resp_s) {
+            memcpy(total_resp, c->resp, c->resp_s);
+        }
+        memcpy(&total_resp[c->resp_s], frame, frame_r);
         free(c->resp);
-        c->resp = con_mem;
-        c->resp_s += bytes_received;
+        c->resp = total_resp;
+        c->resp_s += frame_r;
     }
     return BR_NET_STATUS_OK;
 }
 
-size_t br_resolve(BrConnection* c, char** buffer)
+size_t br_resolve(BrConnection* c, char** buffer, bool should_close)
 {
     *buffer = c->resp;
-    if (c->ssl.enabled) {
-        SSL_free(c->ssl.ssl);
-        SSL_CTX_free(c->ssl.ctx);
+    size_t buffer_s = c->resp_s;
+    c->resp = NULL;
+    c->resp_s = 0;
+    if (should_close) {
+        if (c->ssl.enabled) {
+            SSL_free(c->ssl.ssl);
+            SSL_CTX_free(c->ssl.ctx);
+        }
+        close(c->sockfd);
+        free(c->host);
     }
-    close(c->sockfd);
-    free(c->host);
-    return c->resp_s;
+    return buffer_s;
 }
 void br_protocol_print(BrConnection* c)
 {
@@ -299,9 +312,10 @@ static BR_NET_STATUS __setup_address(BrConnection* c, const char* uri)
 #define _BR_VERSION "0.9"
 #define HEADER_ACCEPT_LANGUAGE "Accept-Language: en-US,en;q=0.9\r\n"
 #define HEADER_CONNECTION "Connection: keep-alive\r\n"
+#define HEADER_CONNECTION_CLOSE "Connection: close\r\n"
 #define HEADER_ACCEPT "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\n"
 
-void get_http_fields(BrConnection* c, char* buffer, size_t buffer_s)
+void get_http_fields(BrConnection* c, char* buffer, size_t buffer_s, bool should_close)
 {
     if (c->protocol != BR_PROTOCOL_HTTP && c->protocol != BR_PROTOCOL_HTTPS) {
         return;
@@ -313,7 +327,11 @@ void get_http_fields(BrConnection* c, char* buffer, size_t buffer_s)
     snprintf(u_agent, sizeof(u_agent),
         "User-Agent: Mozilla/5.0 (%s) Gecko/20100101 Brauzer/%s\r\n",
         os, _BR_VERSION);
-    snprintf(buffer, buffer_s, "Host: %s\r\n" HEADER_ACCEPT HEADER_ACCEPT_LANGUAGE HEADER_CONNECTION "%s\r\n", c->host, u_agent);
+    if (should_close) {
+        snprintf(buffer, buffer_s, "Host: %s\r\n" HEADER_ACCEPT HEADER_ACCEPT_LANGUAGE HEADER_CONNECTION_CLOSE "%s\r\n", c->host, u_agent);
+    } else {
+        snprintf(buffer, buffer_s, "Host: %s\r\n" HEADER_ACCEPT HEADER_ACCEPT_LANGUAGE HEADER_CONNECTION "%s\r\n", c->host, u_agent);
+    }
 }
 
 static BR_PROTOCOL __capture_protocol(const char* uri, int* start_addr)
@@ -334,4 +352,9 @@ static BR_PROTOCOL __capture_protocol(const char* uri, int* start_addr)
         return BR_PROTOCOL_GOPHER;
     }
     return BR_PROTOCOL_UNSUPPORTED;
+}
+
+BR_PROTOCOL br_protocol(BrConnection* c)
+{
+    return c->protocol;
 }
