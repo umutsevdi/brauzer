@@ -155,13 +155,13 @@ BR_NET_STATUS br_request(BrConnection* c, const char* buffer, size_t buffer_s)
     return BR_NET_STATUS_OK;
 }
 
-size_t br_resolve(BrConnection* c, char** buffer, bool should_close)
+size_t br_resolve(BrConnection* c, char** buffer, bool keep)
 {
     *buffer = c->resp;
     size_t buffer_s = c->resp_s;
     c->resp = NULL;
     c->resp_s = 0;
-    if (should_close) {
+    if (!keep) {
         if (c->ssl.enabled) {
             SSL_free(c->ssl.ssl);
             SSL_CTX_free(c->ssl.ctx);
@@ -313,9 +313,10 @@ static BR_NET_STATUS __setup_address(BrConnection* c, const char* uri)
 #define HEADER_ACCEPT_LANGUAGE "Accept-Language: en-US,en;q=0.9\r\n"
 #define HEADER_CONNECTION "Connection: keep-alive\r\n"
 #define HEADER_CONNECTION_CLOSE "Connection: close\r\n"
-#define HEADER_ACCEPT "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\n"
+#define HEADER_ACCEPT "Accept: text/html,application/" \
+                      "xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\n"
 
-void get_http_fields(BrConnection* c, char* buffer, size_t buffer_s, bool should_close)
+void get_http_fields(BrConnection* c, char* buffer, size_t buffer_s, bool keep)
 {
     if (c->protocol != BR_PROTOCOL_HTTP && c->protocol != BR_PROTOCOL_HTTPS) {
         return;
@@ -327,10 +328,10 @@ void get_http_fields(BrConnection* c, char* buffer, size_t buffer_s, bool should
     snprintf(u_agent, sizeof(u_agent),
         "User-Agent: Mozilla/5.0 (%s) Gecko/20100101 Brauzer/%s\r\n",
         os, _BR_VERSION);
-    if (should_close) {
-        snprintf(buffer, buffer_s, "Host: %s\r\n" HEADER_ACCEPT HEADER_ACCEPT_LANGUAGE HEADER_CONNECTION_CLOSE "%s\r\n", c->host, u_agent);
-    } else {
+    if (keep) {
         snprintf(buffer, buffer_s, "Host: %s\r\n" HEADER_ACCEPT HEADER_ACCEPT_LANGUAGE HEADER_CONNECTION "%s\r\n", c->host, u_agent);
+    } else {
+        snprintf(buffer, buffer_s, "Host: %s\r\n" HEADER_ACCEPT HEADER_ACCEPT_LANGUAGE HEADER_CONNECTION_CLOSE "%s\r\n", c->host, u_agent);
     }
 }
 

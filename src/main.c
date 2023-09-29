@@ -15,11 +15,11 @@ int main(int argc, char* argv[])
         : snprintf(msg, 4096, "GET /%s HTTP/1.1\r\n", argv[2]);
 
     if (br_protocol(c) != BR_PROTOCOL_GEMINI)
-        get_http_fields(c, msg + written, 4096 - written, false);
+        get_http_fields(c, msg + written, 4096 - written, true);
     PRINT("REQUEST:%s", , msg);
     br_request(c, msg, strnlen(msg, 4096));
     char* str;
-    size_t bytes = br_resolve(c, &str, false);
+    size_t bytes = br_resolve(c, &str, true);
     printf("RESULT[%lu]:%s\n", bytes, str);
     free(str);
     PRINT("START POLLING %d", , argc - 3);
@@ -27,11 +27,11 @@ int main(int argc, char* argv[])
         bool keep = i < (argc - 1);
         PRINT("%d %d %d", , i, argc, keep);
         int written = snprintf(msg, 4096, "GET /%s HTTP/1.1\r\n", argv[i]);
-        get_http_fields(c, msg + written, 4096 - written, !keep);
+        get_http_fields(c, msg + written, 4096 - written, keep);
         PRINT("REQUEST:%s", , msg);
         br_request(c, msg, strnlen(msg, 4096));
         char* str;
-        size_t bytes = br_resolve(c, &str, !keep);
+        size_t bytes = br_resolve(c, &str, keep);
         printf("RESULT[%lu]:%s\n", bytes, str);
         free(str);
     }

@@ -50,28 +50,37 @@ typedef enum {
 typedef struct __BR_CONNECTION BrConnection;
 
 /**
- * Creates a socket to connect to target URI. Returns the connection if no error occurs
+ * Creates a socket to connect to target URI. Returns the connection if no error
+ * occurs
  */
 BrConnection* br_connection_new(const char* uri);
 /**
- * Performs a connection according to the given BrConnection,
+ * Performs a connection according to the given BrConnection spesification,
  * based on given information.
  */
 BR_NET_STATUS br_connect(BrConnection* c);
 /**
- * Sends a request that contains given buffer and saves it to the given BrConnection
+ * Sends a request that contains given buffer and stores the response
  */
 BR_NET_STATUS br_request(BrConnection* c, const char* buffer, size_t buffer_s);
 /**
- * Resolves the given BrConnection, closes the socket writes the received data to the
- * buffer. Returns the new size of the buffer.
+ * Resolves the given BrConnection, writes the received data to the
+ * buffer. Returns the new size of the buffer. If keep is set to false,
+ * closes the connection
  * @c - connection to resolve
- * @buffer- buffer to write in to. It will be filled with the stored response
+ * @buffer - buffer to write in to. It will be filled with the stored response
+ * @keep - whether to keep the connection alive or not
  * @return size of the newly allocated buffer
  */
-size_t br_resolve(BrConnection* c, char** buffer, bool should_close);
+size_t br_resolve(BrConnection* c, char** buffer, bool keep);
 
-void get_http_fields(BrConnection* c, char* buffer, size_t buffer_s, bool should_close);
+/**
+ * Appends the given HTTP Connection, fills the required headers
+ * @buffer - buffer to append
+ * @buffer_s - size of the buffer
+ * @keep - whether to keep the connection alive or not
+ */
+void get_http_fields(BrConnection* c, char* buffer, size_t buffer_s, bool keep);
 
 void br_protocol_print(BrConnection* c);
 
