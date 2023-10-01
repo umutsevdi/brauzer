@@ -1,5 +1,7 @@
 #include "../include/br_net.h"
+#include "../include/br_protocols.h"
 #include "br_net.h"
+#include "br_protocols.h"
 
 int main(int argc, char* argv[])
 {
@@ -20,8 +22,11 @@ int main(int argc, char* argv[])
     br_request(c, msg, strnlen(msg, 4096));
     char* str;
     size_t bytes = br_resolve(c, &str, true);
-    printf("RESULT[%lu]:%s\n", bytes, str);
-    free(str);
+   // printf("RESULT[%lu]:%s\n", bytes, str);
+    BrHttpResponse* http_resp = br_http_response_new(str, bytes);
+    br_http_response_destroy(http_resp);
+//    free(str);
+    printf("AFTER_FULL_TEXT: %s", str);
     PRINT("START POLLING %d", , argc - 3);
     for (int i = 3; i < argc; i++) {
         bool keep = i < (argc - 1);
@@ -32,8 +37,10 @@ int main(int argc, char* argv[])
         br_request(c, msg, strnlen(msg, 4096));
         char* str;
         size_t bytes = br_resolve(c, &str, keep);
+        BrHttpResponse * r = br_http_response_new(str, bytes);
         printf("RESULT[%lu]:%s\n", bytes, str);
-        free(str);
+        br_http_response_destroy(r);
+//        free(str);
     }
     return 0;
 }

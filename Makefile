@@ -7,7 +7,7 @@ BUILDDIR := bin
 # Compiler and flags
 CC := gcc
 # -g for debug
-CFLAGS := -Iinclude -Wall -Wextra `pkg-config --cflags --libs openssl`
+CFLAGS := -Iinclude -Wall -Wextra `pkg-config --cflags --libs openssl` `pkg-config --cflags --libs glib-2.0`
 
 ifeq ($(TYPE), RELEASE)
     CFLAGS += -O2
