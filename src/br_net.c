@@ -1,8 +1,6 @@
 #include "br_net.h"
 #include "../include/br_net.h"
 #include "br_util.h"
-#include <stdlib.h>
-#include <string.h>
 
 #define PACKET_SIZE 4096
 
@@ -109,7 +107,7 @@ BR_NET_STATUS br_connect(BrConnection* c)
 {
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
-        return WARN(BR_NET_ERROR_SOCKET_CREATION);
+        return ERROR(BR_NET_ERROR_SOCKET_CREATION);
     }
     c->sockfd = sockfd;
     // Return to regular connection if SSL doesn't work
@@ -118,7 +116,7 @@ BR_NET_STATUS br_connect(BrConnection* c)
     address.sin_port = htons(c->port);
     address.sin_addr.s_addr = inet_addr(c->ip);
     if (connect(sockfd, (struct sockaddr*)&address, sizeof(address)) != 0) {
-        return WARN(BR_NET_ERROR_CONNECTION_FAILED);
+        return ERROR(BR_NET_ERROR_CONNECTION_FAILED);
     }
     return __try_ssl(c);
 }
@@ -198,19 +196,19 @@ static int __try_ssl(BrConnection* c)
 {
     c->ssl.enabled = 0;
     if (c->protocol == BR_PROTOCOL_HTTP)
-        return WARN(BR_NET_ERROR_SSL_DISABLED);
+        return ERROR(BR_NET_ERROR_SSL_DISABLED);
     SSL_library_init();
     OpenSSL_add_all_algorithms();
     SSL_load_error_strings();
 
     c->ssl.ctx = SSL_CTX_new(SSLv23_client_method());
     if (!c->ssl.ctx) {
-        return WARN(BR_NET_ERROR_SSL_CONTEXT);
+        return ERROR(BR_NET_ERROR_SSL_CONTEXT);
     }
 
     c->ssl.ssl = SSL_new(c->ssl.ctx);
     if (!c->ssl.ssl) {
-        return WARN(BR_NET_ERROR_SSL);
+        return ERROR(BR_NET_ERROR_SSL);
     }
 
     SSL_set_fd(c->ssl.ssl, c->sockfd);
@@ -218,10 +216,10 @@ static int __try_ssl(BrConnection* c)
     if ((r = SSL_connect(c->ssl.ssl)) != 1) {
         SSL_get_error(c->ssl.ssl, r);
         ERR_print_errors_fp(stderr);
-        return WARN(BR_NET_ERROR_SSL_CONNECTION);
+        return ERROR(BR_NET_ERROR_SSL_CONNECTION);
     }
     c->ssl.enabled = 1;
-    return WARN(BR_NET_STATUS_SSL_ENABLED);
+    return ERROR(BR_NET_STATUS_SSL_ENABLED);
 }
 
 static int __br_read(BrConnection* c, char* buffer, size_t buffer_s)
@@ -285,7 +283,7 @@ static char* __ip_from_uri(const char* hostname)
 static BR_NET_STATUS __setup_address(BrConnection* c, const char* uri)
 {
     // if port can not be obtained from the URI, fallback to the protocols
-    int port = __parse_port(c->protocol, uri);
+    int port = __parse_port(uri);
     char* uri_n = strdup(uri);
     if (port != -1) {
         c->port = port;
@@ -301,7 +299,7 @@ static BR_NET_STATUS __setup_address(BrConnection* c, const char* uri)
         char* ip = __ip_from_uri(c->host);
         if (ip == NULL) {
             free(uri_n);
-            return WARN(BR_NET_ERROR_IP_NOT_FOUND);
+            return ERROR(BR_NET_ERROR_IP_NOT_FOUND);
         }
         memcpy(&c->ip, ip, 16);
     }
@@ -329,7 +327,8 @@ void get_http_fields(BrConnection* c, char* buffer, size_t buffer_s, bool keep)
         "User-Agent: Mozilla/5.0 (%s) Gecko/20100101 Brauzer/%s\r\n",
         os, _BR_VERSION);
     if (keep) {
-        snprintf(buffer, buffer_s, "Host: %s\r\n" HEADER_ACCEPT HEADER_ACCEPT_LANGUAGE HEADER_CONNECTION "%s\r\n", c->host, u_agent);
+        snprintf(buffer, buffer_s, "Host: %s\r\n" HEADER_ACCEPT HEADER_ACCEPT_LANGUAGE HEADER_CONNECTION "%s\r\n",
+            c->host, u_agent);
     } else {
         snprintf(buffer, buffer_s, "Host: %s\r\n" HEADER_ACCEPT HEADER_ACCEPT_LANGUAGE HEADER_CONNECTION_CLOSE "%s\r\n", c->host, u_agent);
     }

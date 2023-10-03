@@ -12,8 +12,6 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <stdint.h>
-#include <string.h>
-#include <unistd.h>
 
 #include "br_util.h"
 #include <openssl/err.h>
@@ -21,15 +19,8 @@
 
 #define BR_REQUEST_SIZE_ATTEMPT 10
 
-typedef enum BR_NET_PROTOCOL {
-    BR_PROTOCOL_GOPHER,
-    BR_PROTOCOL_GEMINI,
-    BR_PROTOCOL_HTTP,
-    BR_PROTOCOL_HTTPS,
-    BR_PROTOCOL_UNSUPPORTED
-} BR_PROTOCOL;
-
 extern const int RequestTypePort[];
+
 typedef enum {
     BR_NET_STATUS_OK = 0,
     BR_NET_STATUS_SSL_ENABLED = 0,

@@ -10,7 +10,7 @@ CC := gcc
 CFLAGS := -Iinclude -Wall -Wextra `pkg-config --cflags --libs openssl` `pkg-config --cflags --libs glib-2.0`
 
 ifeq ($(TYPE), RELEASE)
-    CFLAGS += -O2
+    CFLAGS += -O3 -lm
 else
 	CFLAGS += -g
 endif

@@ -9,7 +9,6 @@
 #pragma once
 #include "br_util.h"
 #include <glib.h>
-#include <stdlib.h>
 typedef enum {
     BR_PRT_HTTP_OK = 0,
     BR_PRT_HTTP_NO_STATUS_CODE,
@@ -71,5 +70,6 @@ typedef struct {
 /**
  * Parses given HTTP response
  */
-BrHttpResponse* br_http_response_new(char* resp, size_t resp_s);
+BrHttpResponse*
+br_http_response_new(char* resp, size_t resp_s);
 void br_http_response_destroy(BrHttpResponse* r);

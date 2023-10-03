@@ -4,6 +4,7 @@
 #define BR_HTTP_HEADER_SIZE 1024
 
 BR_PRT_STATUS __parse_headers(char* resp, size_t resp_s, BrHttpResponse* r);
+BR_PRT_STATUS __get_links(BrHttpResponse* r);
 
 void print_kv(gpointer key, gpointer value, gpointer user_data)
 {
@@ -28,12 +29,12 @@ BR_PRT_STATUS __parse_headers(char* resp, size_t resp_s, BrHttpResponse* r)
     if ((l_end = strstr(l_begin, "\r\n")) != NULL) {
         float _v;
         if (sscanf(l_begin, "HTTP/%f %d %s\r\n", &_v, &r->status_code, status_code_str) != 3) {
-            return WARN(BR_PRT_HTTP_NO_STATUS_CODE);
+            return ERROR(BR_PRT_HTTP_NO_STATUS_CODE);
         }
         printf("%s %d\n", status_code_str, r->status_code);
         l_begin = l_end + 2;
     } else
-        return WARN(BR_PRT_HTTP_NO_STATUS_CODE);
+        return ERROR(BR_PRT_HTTP_NO_STATUS_CODE);
 
     GHashTable* headers = g_hash_table_new(g_str_hash, g_str_equal);
     while ((l_end = strstr(l_begin, "\r\n")) != NULL) {
@@ -61,7 +62,12 @@ BR_PRT_STATUS __parse_headers(char* resp, size_t resp_s, BrHttpResponse* r)
         }
         l_begin = l_end + 2;
     }
-    return WARN(BR_PRT_HTTP_INVALID_HEADERS);
+    return ERROR(BR_PRT_HTTP_INVALID_HEADERS);
+}
+
+BR_PRT_STATUS __get_links(BrHttpResponse* r)
+{
+    return 0;
 }
 
 static void __http_response_destroy_kv(gpointer key, gpointer value, gpointer user_data)
@@ -75,4 +81,5 @@ void br_http_response_destroy(BrHttpResponse* r)
     g_hash_table_foreach(r->headers, __http_response_destroy_kv, NULL);
     g_hash_table_destroy(r->headers);
     free(r->__full_text);
+    free(r);
 }
