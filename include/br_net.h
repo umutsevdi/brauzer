@@ -38,7 +38,22 @@ typedef enum {
 
 } BR_NET_STATUS;
 
-typedef struct __BR_CONNECTION BrConnection;
+typedef struct __BR_SSL_CONFIG {
+    int enabled;
+    SSL_CTX* ctx;
+    SSL* ssl;
+} BrConnectionSsl;
+
+typedef struct __BR_CONNECTION {
+    int sockfd;
+    char ip[16];
+    int port;
+    BR_PROTOCOL protocol;
+    BrConnectionSsl ssl;
+    char* resp;
+    int resp_s;
+    char* host;
+} BrConnection;
 
 /**
  * Creates a socket to connect to the target URI. Returns the connection if there
@@ -64,14 +79,4 @@ BR_NET_STATUS br_request(BrConnection* c, const char* buffer, size_t buffer_s);
  */
 size_t br_resolve(BrConnection* c, char** buffer, bool keep);
 
-/**
- * Appends the given HTTP Connection, fills the required headers
- * @buffer - buffer to append
- * @buffer_s - the size of the buffer
- * @keep - whether to keep the connection alive or not
- */
-void get_http_fields(BrConnection* c, char* buffer, size_t buffer_s, bool keep);
-
 void br_protocol_print(BrConnection* c);
-
-BR_PROTOCOL br_protocol(BrConnection* c);

@@ -23,9 +23,16 @@ typedef enum {
     BR_PRT_HTTP_ERROR_SSL_CONTEXT,
     BR_PRT_HTTP_ERROR_SSL_CONNECTION,
     BR_PRT_HTTP_ERROR_CONNECTION_FAILED,
-    BR_PRT_HTTP_ERROR_SEND
-
+    BR_PRT_HTTP_ERROR_SEND,
+    BR_PRT_GEMINI_OK,
+    BR_PRT_GEMINI_INVALID_HEADER,
+    BR_PRT_GEMINI_NON_INPUT_POST_TEXT,
 } BR_PRT_STATUS;
+
+/******************************************************************************
+                                  HTTP
+*****************************************************************************/
+
 typedef enum {
     BR_PRT_HTTP_GET,
     BR_PRT_HTTP_POST,
@@ -33,12 +40,35 @@ typedef enum {
     BR_PRT_HTTP_DELETE
 } BR_PRT_HTTP_TYPES;
 
-typedef enum {
-    BR_PRT_PRT_GET,
-    BR_PRT_PRT_POST,
-    BR_PRT_PRT_PUT,
-    BR_PRT_PRT_DELETE
-} BR_PRT_GEMINI_TYPES;
+typedef struct {
+    int status_code;
+    GHashTable* headers;
+    char* body;
+    char* __full_text;
+    size_t __full_text_s;
+} BrHttpResponse;
+
+#define BR_HTTP_RESP_UNWRAP(r)                             \
+    "BrHttpResponse{status:%d, body: %s, full_size: %ld}", \
+        r->status_code,                                    \
+        r->body,                                           \
+        r->__full_text_s
+
+BrHttpResponse* br_http_response_new(char* resp, size_t resp_s);
+void br_http_response_destroy(BrHttpResponse* r);
+
+/**
+ * Appends the given HTTP Connection, fills the required headers
+ * @buffer - buffer to append
+ * @buffer_s - the size of the buffer
+ * @keep - whether to keep the connection alive or not
+ */
+void br_http_set_req_headers(const char* host, char* buffer, size_t buffer_s, bool keep);
+
+/******************************************************************************
+                                  GEMINI
+*****************************************************************************/
+
 
 typedef enum {
     BR_GEMINI_RESP_INPUT = 10,
@@ -53,23 +83,19 @@ typedef enum {
 typedef struct {
     int status_number;
     BR_GEMINI_RESP status_code;
-    const char* meta;
-    char* buffer;
-    size_t buffer_s;
-    size_t buffer_bytes;
-} BrGemResponse;
-
-typedef struct {
-    int status_code;
-    GHashTable* headers;
+    char* mime;
+    char* question;
     char* body;
     char* __full_text;
     size_t __full_text_s;
-} BrHttpResponse;
+} BrGemResponse;
+#define BR_GEM_RESP_UNWRAP(r)                                                \
+    "BrGemResponse{status:%d,mime: %s,query: %s, body: %s, full_size: %ld}", \
+        r->status_number,                                                    \
+        r->mime,                                                             \
+        r->question,                                                         \
+        r->body,                                                             \
+        r->__full_text_s
 
-/**
- * Parses given HTTP response
- */
-BrHttpResponse*
-br_http_response_new(char* resp, size_t resp_s);
-void br_http_response_destroy(BrHttpResponse* r);
+BrGemResponse* br_gemini_response_new(char* resp, size_t resp_s);
+void br_gemini_response_destroy(BrGemResponse* r);

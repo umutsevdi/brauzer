@@ -8,24 +8,7 @@ const int RequestTypePort[] = {
     70, 1965, 80, 443
 };
 
-typedef struct __BR_SSL_CONFIG {
-    int enabled;
-    SSL_CTX* ctx;
-    SSL* ssl;
-} BrConnectionSsl;
-
-typedef struct __BR_CONNECTION {
-    int sockfd;
-    char ip[16];
-    int port;
-    BR_PROTOCOL protocol;
-    BrConnectionSsl ssl;
-    char* resp;
-    int resp_s;
-    char* host;
-} BrConnection;
-
-static BR_NET_STATUS __setup_address(BrConnection* c, const char* uri);
+static BR_NET_STATUS __setup_address(BrConnection* c, const char* uri, int proto_idx);
 static int __is_ip_address(const char* input);
 static void __strip_colon(char* str);
 static char* __uri_from_ip(const char* ip);
@@ -49,7 +32,7 @@ static BR_PROTOCOL __capture_protocol(const char* uri, int* start_addr);
  * Tries to obtain the port from the URI and returns it.
  * If the URI does not contain port, returns -1
  */
-static int __parse_port(BR_PROTOCOL protocol, const char* URI);
+static int __parse_port(const char* URI);
 /**
  * Attempts to connect to the target IP through SSL, returns
  * whether the attempt is successful or not.
@@ -91,10 +74,10 @@ BrConnection* br_connection_new(const char* uri)
     int start_addr = 0;
     c->protocol = __capture_protocol(uri, &start_addr);
     if (c->protocol == BR_PROTOCOL_UNSUPPORTED) {
-        WARN(BR_NET_ERROR_INVALID_PROTOCOL);
+        WARN(BR_PROTOCOL_UNSUPPORTED);
         goto br_connection_new_error;
     }
-    if (__setup_address(c, uri + start_addr)) {
+    if (__setup_address(c, uri, start_addr)) {
         goto br_connection_new_error;
     }
     return c;
@@ -175,15 +158,13 @@ void br_protocol_print(BrConnection* c)
         c->host, c->ip, c->port, c->protocol, c->ssl.enabled);
 }
 
-static int __parse_port(BR_PROTOCOL protocol, const char* URI)
+static int __parse_port(const char* URI)
 {
     char* port_str;
     // Check if the given Ip Address
     if ((port_str = strstr(URI, ":")), port_str != NULL) {
-        PRINT("%s", , port_str);
         char* endptr = NULL;
         int p = strtol(&port_str[1], &endptr, 10);
-        PRINT("%s| %d| %s", , port_str + 1, p, endptr);
         if (*endptr == 0) {
             port_str[0] = 0;
             return p;
@@ -280,11 +261,12 @@ static char* __ip_from_uri(const char* hostname)
     return inet_ntoa(*((struct in_addr*)host_entry->h_addr_list[0]));
 }
 
-static BR_NET_STATUS __setup_address(BrConnection* c, const char* uri)
+static BR_NET_STATUS __setup_address(BrConnection* c, const char* uri, int proto_idx)
 {
     // if port can not be obtained from the URI, fallback to the protocols
-    int port = __parse_port(uri);
-    char* uri_n = strdup(uri);
+    const char* uri_trimmed = uri + proto_idx;
+    int port = __parse_port(uri_trimmed);
+    char* uri_n = strdup(uri_trimmed);
     if (port != -1) {
         c->port = port;
         __strip_colon(uri_n);
@@ -292,7 +274,7 @@ static BR_NET_STATUS __setup_address(BrConnection* c, const char* uri)
         c->port = RequestTypePort[c->protocol];
     }
     if (__is_ip_address(uri)) {
-        c->host = __uri_from_ip(uri);
+        c->host = __uri_from_ip(uri_n);
         memcpy(&c->ip, uri, 16);
     } else {
         c->host = uri_n;
@@ -303,35 +285,7 @@ static BR_NET_STATUS __setup_address(BrConnection* c, const char* uri)
         }
         memcpy(&c->ip, ip, 16);
     }
-    PRINT("%s %s %d", , c->host, c->ip, c->port);
     return BR_NET_STATUS_OK;
-}
-
-#define _BR_VERSION "0.9"
-#define HEADER_ACCEPT_LANGUAGE "Accept-Language: en-US,en;q=0.9\r\n"
-#define HEADER_CONNECTION "Connection: keep-alive\r\n"
-#define HEADER_CONNECTION_CLOSE "Connection: close\r\n"
-#define HEADER_ACCEPT "Accept: text/html,application/" \
-                      "xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\n"
-
-void get_http_fields(BrConnection* c, char* buffer, size_t buffer_s, bool keep)
-{
-    if (c->protocol != BR_PROTOCOL_HTTP && c->protocol != BR_PROTOCOL_HTTPS) {
-        return;
-    }
-    char u_agent[4096];
-
-    char os[1024];
-    get_os(os, 1024);
-    snprintf(u_agent, sizeof(u_agent),
-        "User-Agent: Mozilla/5.0 (%s) Gecko/20100101 Brauzer/%s\r\n",
-        os, _BR_VERSION);
-    if (keep) {
-        snprintf(buffer, buffer_s, "Host: %s\r\n" HEADER_ACCEPT HEADER_ACCEPT_LANGUAGE HEADER_CONNECTION "%s\r\n",
-            c->host, u_agent);
-    } else {
-        snprintf(buffer, buffer_s, "Host: %s\r\n" HEADER_ACCEPT HEADER_ACCEPT_LANGUAGE HEADER_CONNECTION_CLOSE "%s\r\n", c->host, u_agent);
-    }
 }
 
 static BR_PROTOCOL __capture_protocol(const char* uri, int* start_addr)
@@ -352,9 +306,4 @@ static BR_PROTOCOL __capture_protocol(const char* uri, int* start_addr)
         return BR_PROTOCOL_GOPHER;
     }
     return BR_PROTOCOL_UNSUPPORTED;
-}
-
-BR_PROTOCOL br_protocol(BrConnection* c)
-{
-    return c->protocol;
 }

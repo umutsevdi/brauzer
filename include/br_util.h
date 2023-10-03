@@ -17,11 +17,11 @@
 
 #define MAXLINE 256
 #define PRINT(FMT, ARGS...) printf(__FILE__ #FMT "\r\n" ARGS)
-#define WARN(CODE)                                               \
-    do {                                                         \
-        fprintf(stderr, __FILE__ ":%d " #CODE "\r\n", __LINE__); \
+#define WARN(CODE)                                                             \
+    do {                                                                       \
+        fprintf(stderr, __FILE__ "#%s():%d " #CODE "\r\n", __func__, __LINE__); \
     } while (0)
-#define ERROR(CODE) (fprintf(stderr, __FILE__ ":%d " #CODE "\r\n", __LINE__), CODE)
+#define ERROR(CODE) (fprintf(stderr, __FILE__ "#%s():%d " #CODE "\r\n", __func__, __LINE__), CODE)
 
 typedef enum BR_NET_PROTOCOL {
     BR_PROTOCOL_GOPHER,
