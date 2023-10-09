@@ -13,8 +13,8 @@ int main(int argc, char* argv[])
     br_connect(&c);
     char msg[4096];
     int written = c.protocol == BR_PROTOCOL_GEMINI
-        ? snprintf(msg, 4096, "gemini://%s/%s\r\n", c.host, argv[2])
-        : snprintf(msg, 4096, "GET /%s HTTP/1.1\r\n", argv[2]);
+                      ? snprintf(msg, 4096, "gemini://%s/%s\r\n", c.host, argv[2])
+                      : snprintf(msg, 4096, "GET /%s HTTP/1.1\r\n", argv[2]);
     if (c.protocol != BR_PROTOCOL_GEMINI)
         br_http_set_req_headers(c.host, msg + written, 4096 - written, true);
     PRINT("REQUEST: %s", , msg);

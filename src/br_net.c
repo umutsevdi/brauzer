@@ -3,9 +3,7 @@
 
 #define PACKET_SIZE 4096
 
-const int RequestTypePort[] = {
-    70, 1965, 80, 443
-};
+const int RequestTypePort[] = {70, 1965, 80, 443};
 
 static BR_NET_STATUS _setup_address(BrSession* c, const char* uri, int proto_idx);
 /**
@@ -68,8 +66,8 @@ BR_NET_STATUS br_connect(BrSession* c)
     }
     BR_NET_STATUS ssl_status = _try_ssl(c);
     return ssl_status != BR_NET_ERROR_SSL_DISABLED
-        ? ssl_status
-        : BR_NET_STATUS_OK;
+               ? ssl_status
+               : BR_NET_STATUS_OK;
 }
 
 BR_NET_STATUS br_request(BrSession* c, const char* buffer, size_t buffer_s)
