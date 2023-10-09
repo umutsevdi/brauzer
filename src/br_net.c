@@ -1,6 +1,5 @@
 #include "br_net.h"
-#include "br_protocols.h"
-#include "br_util.h"
+#include "../include/br_net.h"
 
 #define PACKET_SIZE 4096
 
@@ -8,7 +7,7 @@ const int RequestTypePort[] = {
     70, 1965, 80, 443
 };
 
-static BR_NET_STATUS __setup_address(BrSession* c, const char* uri, int proto_idx);
+static BR_NET_STATUS _setup_address(BrSession* c, const char* uri, int proto_idx);
 /**
  * Attempts to connect to the target IP through SSL, returns
  * whether the attempt is successful or not.
@@ -17,7 +16,7 @@ static BR_NET_STATUS __setup_address(BrSession* c, const char* uri, int proto_id
  *  @c - BrConnection to establish
  *  @return BR_NET_STATUS - connection status
  */
-static int __try_ssl(BrSession* c);
+static int _try_ssl(BrSession* c);
 
 /**
  * Reads buffer_s bytes from the socket and writes to the given buffer. Uses SSL
@@ -27,7 +26,7 @@ static int __try_ssl(BrSession* c);
  * @buffer_s - Max buffer
  * @return bytes written
  */
-static int __br_read(BrSession* c, char* buffer, size_t buffer_s);
+static ssize_t _br_read(BrSession* c, char* buffer, int buffer_s);
 
 /**
  * Writes buffer_s bytes to the socket and sends. Returns number of bytes
@@ -37,7 +36,7 @@ static int __br_read(BrSession* c, char* buffer, size_t buffer_s);
  * @buffer_s - Max buffer
  * @return bytes written
  */
-static int __br_write(BrSession* c, char* buffer, size_t buffer_s);
+static ssize_t _br_write(BrSession* c, char* buffer, int buffer_s);
 
 BR_NET_STATUS br_session_new(BrSession* c, const char* uri)
 {
@@ -49,7 +48,7 @@ BR_NET_STATUS br_session_new(BrSession* c, const char* uri)
     if (c->protocol == BR_PROTOCOL_UNSUPPORTED) {
         return ERROR(BR_NET_ERROR_INVALID_PROTOCOL);
     }
-    return __setup_address(c, uri, start_addr);
+    return _setup_address(c, uri, start_addr);
 }
 
 BR_NET_STATUS br_connect(BrSession* c)
@@ -67,32 +66,30 @@ BR_NET_STATUS br_connect(BrSession* c)
     if (connect(sockfd, (struct sockaddr*)&address, sizeof(address)) != 0) {
         return ERROR(BR_NET_ERROR_CONNECTION_FAILED);
     }
-    BR_NET_STATUS ssl_status = __try_ssl(c);
+    BR_NET_STATUS ssl_status = _try_ssl(c);
     return ssl_status != BR_NET_ERROR_SSL_DISABLED
         ? ssl_status
         : BR_NET_STATUS_OK;
 }
 
-void br_request(BrSession* c, const char* buffer, size_t buffer_s)
+BR_NET_STATUS br_request(BrSession* c, const char* buffer, size_t buffer_s)
 {
-    // TODO do this
-    WARN(REQUESTING);
-    sleep(10);
-    WARN(SLEEP ENDED);
     int attempt = BR_REQUEST_SIZE_ATTEMPT;
     size_t total_w = 0;
-    size_t frame_w;
+    int frame_w;
     char frame[PACKET_SIZE];
     do {
-        frame_w = buffer_s < PACKET_SIZE ? buffer_s : PACKET_SIZE;
+        frame_w = buffer_s < PACKET_SIZE ? (int)buffer_s : PACKET_SIZE;
         memcpy(frame, &buffer[total_w], frame_w);
-        int bytes_w = __br_write(c, frame, frame_w);
+        ssize_t bytes_w = _br_write(c, frame, frame_w);
+        if (bytes_w == -1)
+            return ERROR(BR_ERROR_BROKEN_CONNECTION);
         total_w += bytes_w;
     } while (total_w < buffer_s && attempt-- > 0);
     memset(frame, 0, 4096);
-    int frame_r = 0;
+    ssize_t frame_r;
     bool eof = false;
-    while (!eof && (frame_r = __br_read(c, frame, PACKET_SIZE)) > 0) {
+    while (!eof && (frame_r = _br_read(c, frame, PACKET_SIZE)) > 0) {
         if (frame_r < PACKET_SIZE) {
             eof = true;
         }
@@ -106,6 +103,9 @@ void br_request(BrSession* c, const char* buffer, size_t buffer_s)
         c->resp = total_resp;
         c->resp_s += frame_r;
     }
+    if (total_w == 0 || c->resp_s == 0)
+        return ERROR(BR_ERROR_BROKEN_CONNECTION);
+    return BR_NET_STATUS_OK;
 }
 
 size_t br_resolve(BrSession* c, char** buffer, bool keep)
@@ -124,7 +124,7 @@ size_t br_resolve(BrSession* c, char** buffer, bool keep)
     return c->resp_s;
 }
 
-static int __try_ssl(BrSession* c)
+static int _try_ssl(BrSession* c)
 {
     c->ssl.enabled = 0;
     if (c->protocol == BR_PROTOCOL_HTTP)
@@ -154,19 +154,19 @@ static int __try_ssl(BrSession* c)
     return ERROR(BR_NET_STATUS_SSL_ENABLED);
 }
 
-static int __br_read(BrSession* c, char* buffer, size_t buffer_s)
+static ssize_t _br_read(BrSession* c, char* buffer, int buffer_s)
 {
     return c->ssl.enabled ? SSL_read(c->ssl.ssl, buffer, buffer_s)
                           : recv(c->sockfd, buffer, buffer_s, 0);
 }
 
-static int __br_write(BrSession* c, char* buffer, size_t buffer_s)
+static ssize_t _br_write(BrSession* c, char* buffer, int buffer_s)
 {
     return c->ssl.enabled ? SSL_write(c->ssl.ssl, buffer, buffer_s)
                           : send(c->sockfd, buffer, buffer_s, 0);
 }
 
-static BR_NET_STATUS __setup_address(BrSession* c, const char* uri, int proto_idx)
+static BR_NET_STATUS _setup_address(BrSession* c, const char* uri, int proto_idx)
 {
     // if port can not be obtained from the URI, fallback to the protocols
     const char* uri_trimmed = uri + proto_idx;

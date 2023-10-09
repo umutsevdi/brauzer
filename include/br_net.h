@@ -35,8 +35,7 @@ typedef enum {
     BR_NET_ERROR_SSL_CONTEXT,
     BR_NET_ERROR_SSL_CONNECTION,
     BR_NET_ERROR_CONNECTION_FAILED,
-    BR_NET_ERROR_SEND
-
+    BR_ERROR_BROKEN_CONNECTION,
 } BR_NET_STATUS;
 
 typedef struct {
@@ -101,12 +100,16 @@ BR_NET_STATUS br_connect(BrSession* c);
  * @c - Session to obtain content
  * @buffer - Buffer to send
  * @buffer_s - Exact size of the string to send
+ * @return
+ * - BR_NET_STATUS_OK if the request has been sent and a response received
+ * @errors:
+ * - BR_ERROR_BROKEN_CONNECTION
  */
-void br_request(BrSession* c, const char* buffer, size_t buffer_s);
+BR_NET_STATUS br_request(BrSession* c, const char* buffer, size_t buffer_s);
 /**
- * Resolves the given BrConnection, and writes the received data to the
+ * Resolves the given session, and writes the received data to the
  * buffer. Returns the new size of the buffer.
- * - If keep is set to false, closes the connection.
+ * - If keep is set to false, also closes the connection.
  * @buffer - buffer pointer to assign. It will be filled with
  * address of the stored response.
  * @keep - whether to keep the connection alive or not

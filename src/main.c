@@ -18,7 +18,10 @@ int main(int argc, char* argv[])
     if (c.protocol != BR_PROTOCOL_GEMINI)
         br_http_set_req_headers(c.host, msg + written, 4096 - written, true);
     PRINT("REQUEST: %s", , msg);
-    br_request(&c, msg, strnlen(msg, 4096));
+    BR_NET_STATUS status = br_request(&c, msg, strnlen(msg, 4096));
+    if (!status)
+        return 1;
+
     char* str;
     size_t bytes = br_resolve(&c, &str, true);
     if (c.protocol != BR_PROTOCOL_GEMINI) {
