@@ -12,16 +12,16 @@ int main(int argc, char* argv[])
     printf(BR_SESSION_UNWRAP((&c)));
     br_connect(&c);
     char msg[4096];
-    int written = c.protocol == BR_PROTOCOL_GEMINI
-                      ? snprintf(msg, 4096, "gemini://%s/%s\r\n", c.host, argv[2])
-                      : snprintf(msg, 4096, "GET /%s HTTP/1.1\r\n", argv[2]);
+    int written =
+        c.protocol == BR_PROTOCOL_GEMINI
+            ? snprintf(msg, 4096, "gemini://%s/%s\r\n", c.host, argv[2])
+            : snprintf(msg, 4096, "GET /%s HTTP/1.1\r\n", argv[2]);
     if (c.protocol != BR_PROTOCOL_GEMINI)
         br_http_set_req_headers(c.host, msg + written, 4096 - written, true);
     PRINT("REQUEST: %s", , msg);
     BR_NET_STATUS status = br_request(&c, msg, strnlen(msg, 4096));
     if (!status)
         return 1;
-
     char* str;
     size_t bytes = br_resolve(&c, &str, true);
     if (c.protocol != BR_PROTOCOL_GEMINI) {
@@ -35,8 +35,9 @@ int main(int argc, char* argv[])
         for (int i = 3; i < argc; i++) {
             bool keep = i < (argc - 1);
             int written = snprintf(msg, 4096, "GET /%s HTTP/1.1\r\n", argv[i]);
-            br_http_set_req_headers(c.host, msg + written, 4096 - written, keep);
-            //        PRINT("REQUEST:%s", , msg);
+            br_http_set_req_headers(c.host, msg + written, 4096 - written,
+                                    keep);
+            PRINT("REQUEST:%s", , msg);
             br_request(&c, msg, strnlen(msg, 4096));
             char* str;
             size_t bytes = br_resolve(&c, &str, keep);

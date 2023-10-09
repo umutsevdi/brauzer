@@ -63,8 +63,7 @@ char* ip_from(const char* hostname)
 
 int parse_port(const char* URI)
 {
-    char* port_str;
-    // Check if the given Ip Address
+    char* port_str;// Check if the given Ip Address
     if ((port_str = strstr(URI, ":")), port_str != NULL) {
         char* endptr = NULL;
         int p = strtol(&port_str[1], &endptr, 10);
@@ -105,13 +104,14 @@ void get_os(char* os, size_t os_s)
     OSVERSIONINFO osvi;
     ZeroMemory(&osvi, sizeof(OSVERSIONINFO));
     osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-
     if (GetVersionEx(&osvi)) {
-        snprintf(os, os_s, "Windows NT %d.%d", osvi.dwMajorVersion, osvi.dwMinorVersion);
+        snprintf(os, os_s, "Windows NT %d.%d", osvi.dwMajorVersion,
+                 osvi.dwMinorVersion);
     }
 }
 
-#elif defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
+#elif defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__)        \
+    || defined(__OpenBSD__) || defined(__DragonFly__)
 #include <sys/utsname.h>
 
 void get_os(char* os, size_t os_s)

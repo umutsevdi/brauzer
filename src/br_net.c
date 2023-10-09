@@ -5,7 +5,8 @@
 
 const int RequestTypePort[] = {70, 1965, 80, 443};
 
-static BR_NET_STATUS _setup_address(BrSession* c, const char* uri, int proto_idx);
+static BR_NET_STATUS _setup_address(BrSession* c, const char* uri,
+                                    int proto_idx);
 /**
  * Attempts to connect to the target IP through SSL, returns
  * whether the attempt is successful or not.
@@ -65,9 +66,8 @@ BR_NET_STATUS br_connect(BrSession* c)
         return ERROR(BR_NET_ERROR_CONNECTION_FAILED);
     }
     BR_NET_STATUS ssl_status = _try_ssl(c);
-    return ssl_status != BR_NET_ERROR_SSL_DISABLED
-               ? ssl_status
-               : BR_NET_STATUS_OK;
+    return ssl_status != BR_NET_ERROR_SSL_DISABLED ? ssl_status
+                                                   : BR_NET_STATUS_OK;
 }
 
 BR_NET_STATUS br_request(BrSession* c, const char* buffer, size_t buffer_s)
@@ -164,7 +164,8 @@ static ssize_t _br_write(BrSession* c, char* buffer, int buffer_s)
                           : send(c->sockfd, buffer, buffer_s, 0);
 }
 
-static BR_NET_STATUS _setup_address(BrSession* c, const char* uri, int proto_idx)
+static BR_NET_STATUS _setup_address(BrSession* c, const char* uri,
+                                    int proto_idx)
 {
     // if port can not be obtained from the URI, fallback to the protocols
     const char* uri_trimmed = uri + proto_idx;

@@ -51,16 +51,15 @@ typedef struct {
     size_t __full_text_s;
 } BrHttpResponse;
 
-#define BR_HTTP_RESP_UNWRAP(r)                             \
-    "BrHttpResponse{status:%d, body: %s, full_size: %ld}", \
-        (r)->status_code,                                  \
-        (r)->body,                                         \
-        (r)->__full_text_s
+#define BR_HTTP_RESP_UNWRAP(r)                                                 \
+    "BrHttpResponse{status:%d, body: %s, full_size: %ld}", (r)->status_code,   \
+        (r)->body, (r)->__full_text_s
 
 /**
  * Parses the data from the connection and converts it into a HttpResponse
  */
-BR_PRT_STATUS br_http_response_new(BrHttpResponse* h_resp, char* resp, size_t resp_s);
+BR_PRT_STATUS br_http_response_new(BrHttpResponse* h_resp, char* resp,
+                                   size_t resp_s);
 void br_http_response_destroy(BrHttpResponse* r);
 
 /**
@@ -69,7 +68,8 @@ void br_http_response_destroy(BrHttpResponse* r);
  * @buffer_s - the size of the buffer
  * @keep - whether to keep the connection alive or not
  */
-void br_http_set_req_headers(const char* host, char* buffer, size_t buffer_s, bool keep);
+void br_http_set_req_headers(const char* host, char* buffer, size_t buffer_s,
+                             bool keep);
 
 /******************************************************************************
                                   GEMINI
@@ -94,13 +94,12 @@ typedef struct {
     char* __full_text;
     size_t __full_text_s;
 } BrGemResponse;
-#define BR_GEM_RESP_UNWRAP(r)                                                \
-    "BrGemResponse{status:%d,mime: %s,query: %s, body: %s, full_size: %ld}", \
-        (r)->status_number,                                                  \
-        (r)->mime,                                                           \
-        (r)->question,                                                       \
-        (r)->body,                                                           \
+
+#define BR_GEM_RESP_UNWRAP(r)                                                  \
+    "BrGemResponse{status:%d,mime: %s,query: %s, body: %s, full_size: %ld}",   \
+        (r)->status_number, (r)->mime, (r)->question, (r)->body,               \
         (r)->__full_text_s
 
-BR_PRT_STATUS br_gemini_response_new(BrGemResponse* gem_r, char* resp, size_t resp_s);
+BR_PRT_STATUS br_gemini_response_new(BrGemResponse* gem_r, char* resp,
+                                     size_t resp_s);
 void br_gemini_response_destroy(BrGemResponse* r);
