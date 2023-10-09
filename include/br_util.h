@@ -15,13 +15,19 @@
 #include <string.h>
 #include <unistd.h>
 
+#define MAX_URI_LENGTH 4096
 #define MAXLINE 256
 #define PRINT(FMT, ARGS...) printf(__FILE__ #FMT "\r\n" ARGS)
-#define WARN(CODE)                                                             \
-    do {                                                                       \
-        fprintf(stderr, __FILE__ "#%s():%d " #CODE "\r\n", __func__, __LINE__); \
+#define WARN(CODE)                                         \
+    do {                                                   \
+        fprintf(stderr, __FILE__ "#%s():%d " #CODE "\r\n", \
+            __func__, __LINE__);                           \
     } while (0)
-#define ERROR(CODE) (fprintf(stderr, __FILE__ "#%s():%d " #CODE "\r\n", __func__, __LINE__), CODE)
+
+#define ERROR(CODE) (fprintf(stderr,                        \
+                         __FILE__ "#%s():%d " #CODE "\r\n", \
+                         __func__, __LINE__),               \
+    CODE)
 
 typedef enum BR_NET_PROTOCOL {
     BR_PROTOCOL_GOPHER,
@@ -31,21 +37,33 @@ typedef enum BR_NET_PROTOCOL {
     BR_PROTOCOL_UNSUPPORTED
 } BR_PROTOCOL;
 
-#define BR_LINK_SIZE 1024
-/**
- * A URI that exists within a protocol
- * to poll the follow-up page
- */
-typedef struct __BR_UTIL_URI {
-    BR_PROTOCOL protocol;
-    bool is_local;
-    char URI[BR_LINK_SIZE];
-    size_t URI_s;
-    struct __BR_UTIL_URI* next;
-} BrUri;
-
-/**
- * Writes the browser agent information
- * to the given buffer
- */
+/* Returns whether there is a NULL character within the first MAX_URI_LENGTH
+ * bytes or not */
+bool is_null_terminated(const char* str);
+/* Returns true if given string is a valid IPv4 address */
+bool is_ip(const char* input);
+/* Removes all characters starting from the first ':' */
+void uri_strip(char* str);
+/* Obtains a valid host name from given IP address */
+char* uri_from(const char* ip);
+/* Obtains a valid IP address from given URI */
+char* ip_from(const char* uri);
+/* Tries to obtain the port from the URI and returns it.
+ * If the URI does not contain a port, returns -1 */
+int parse_port(const char* URI);
+/* Writes the browser agent information to the given buffer */
 void get_os(char* os, size_t os_s);
+/**
+ * Tries to obtain the protocol from the URI, returns the protocol name
+ * while setting up the index to where protocol definition ends.
+ *
+ * @URI - to parse
+ * @start_addr - address to set where URI begins
+ * @returns - protocol type BR_PROTOCOL, BR_PROTOCOL_UNSUPPORTED,
+ * if the protocol is not recognized
+ *
+ * example:
+ * capture_protocol("https://www.google.com", &addr); -> BR_PROTOCOL_HTTPS
+ * addr will be 9, because that's where the domain starts('w')
+ */
+BR_PROTOCOL capture_protocol(const char* uri, int* start_addr);

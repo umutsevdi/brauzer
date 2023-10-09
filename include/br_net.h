@@ -9,11 +9,12 @@
 *****************************************************************************/
 #pragma once
 
+#include "br_util.h"
+
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <stdint.h>
 
-#include "br_util.h"
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
@@ -38,45 +39,77 @@ typedef enum {
 
 } BR_NET_STATUS;
 
-typedef struct __BR_SSL_CONFIG {
+typedef struct {
     int enabled;
     SSL_CTX* ctx;
     SSL* ssl;
-} BrConnectionSsl;
+} BrSessionSsl;
 
-typedef struct __BR_CONNECTION {
+typedef struct {
     int sockfd;
     char ip[16];
     int port;
     BR_PROTOCOL protocol;
-    BrConnectionSsl ssl;
-    char* resp;
-    int resp_s;
+    BrSessionSsl ssl;
     char* host;
-} BrConnection;
+    char* resp;
+    size_t resp_s;
+} BrSession;
+
+#define BR_SESSION_UNWRAP(r)                                      \
+    "BrSession{host: %s, ip:%s, port: %d, protocol %d,"           \
+    "BrSessionSsl{enabled: %c, SSL: %p, SSL_Ctx: %p},"            \
+    "resp_s: %ld}",                                               \
+        (r)->host,                                                \
+        (r)->ip,                                                  \
+        (r)->port,                                                \
+        (r)->protocol,                                            \
+        (r)->ssl.enabled ? 'T' : 'F', (r)->ssl.ssl, (r)->ssl.ctx, \
+        (r)->resp_s
 
 /**
- * Creates a socket to connect to the target URI. Returns the connection if there
- * is no error
+ * Parses the given URI and sets up the given BrSession
+ * @c - Connection to assign
+ * @URI - to parse
+ * @return - BR_NET_STATUS_OK if the URI is valid and matches with an IP
+ * address.
+ *     - If the URI is an IP address, tries to find a host name.
+ *     - If the URI contains a port, overrides the default port of the protocol.
+ *     - URI must contain a protocol and the protocol must be supported.
+ * @errors:
+ * - BR_NET_ERROR_INVALID_URI_STRING
+ * - BR_PROTOCOL_UNSUPPORTED
+ * - BR_NET_ERROR_IP_NOT_FOUND
  */
-BrConnection* br_connection_new(const char* uri);
+BR_NET_STATUS br_session_new(BrSession* c, const char* uri);
 /**
- * Performs a connection according to the given BrConnection specification
+ * Performs a connection according to the given BrSession specification.
+ * @return
+ * - BR_NET_STATUS_SSL_ENABLED if the connection is established with the SSL
+ * - BR_NET_STATUS_OK if the connection is established without the SSL
+ * - Supports all SSL functions supported by openssl
+ * @errors:
+ * - BR_NET_ERROR_SOCKET_CREATION
+ * - BR_NET_ERROR_CONNECTION_FAILED
+ * - BR_NET_ERROR_SSL_CONTEXT
+ * - BR_NET_ERROR_SSL
+ * - BR_NET_ERROR_SSL_CONNECTION
  */
-BR_NET_STATUS br_connect(BrConnection* c);
+BR_NET_STATUS br_connect(BrSession* c);
 /**
- * Sends a request that contains the given buffer and stores the response
+ * Sends a request that contains the given buffer and captures the response
+ * @c - Session to obtain content
+ * @buffer - Buffer to send
+ * @buffer_s - Exact size of the string to send
  */
-BR_NET_STATUS br_request(BrConnection* c, const char* buffer, size_t buffer_s);
+void br_request(BrSession* c, const char* buffer, size_t buffer_s);
 /**
  * Resolves the given BrConnection, and writes the received data to the
- * buffer. Returns the new size of the buffer. If keep is set to false,
- * closes the connection
- * @c - connection to resolve
- * @buffer - buffer to write into. It will be filled with the stored response
+ * buffer. Returns the new size of the buffer.
+ * - If keep is set to false, closes the connection.
+ * @buffer - buffer pointer to assign. It will be filled with
+ * address of the stored response.
  * @keep - whether to keep the connection alive or not
  * @return size of the newly allocated buffer
  */
-size_t br_resolve(BrConnection* c, char** buffer, bool keep);
-
-void br_protocol_print(BrConnection* c);
+size_t br_resolve(BrSession* c, char** buffer, bool keep);

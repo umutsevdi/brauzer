@@ -1,5 +1,5 @@
 #include "br_net.h"
-#include "../include/br_net.h"
+#include "br_protocols.h"
 #include "br_util.h"
 
 #define PACKET_SIZE 4096
@@ -8,31 +8,7 @@ const int RequestTypePort[] = {
     70, 1965, 80, 443
 };
 
-static BR_NET_STATUS __setup_address(BrConnection* c, const char* uri, int proto_idx);
-static int __is_ip_address(const char* input);
-static void __strip_colon(char* str);
-static char* __uri_from_ip(const char* ip);
-static char* __ip_from_uri(const char* hostname);
-
-/**
- * Tries to obtain the protocol from the URI, returns the protocol name
- * while setting up the index to where protocol definition ends.
- *
- * @URI - to parse
- * @start_addr - address to set where URI begins
- * @returns - protocol type BR_PROTOCOL, BR_PROTOCOL_UNSUPPORTED,
- * if the protocol is not recognized
- *
- * example:
- * __capture_protocol("https://www.google.com", &addr); -> BR_PROTOCOL_HTTPS
- * addr will be 9, because that's where the domain starts('w')
- */
-static BR_PROTOCOL __capture_protocol(const char* uri, int* start_addr);
-/**
- * Tries to obtain the port from the URI and returns it.
- * If the URI does not contain port, returns -1
- */
-static int __parse_port(const char* URI);
+static BR_NET_STATUS __setup_address(BrSession* c, const char* uri, int proto_idx);
 /**
  * Attempts to connect to the target IP through SSL, returns
  * whether the attempt is successful or not.
@@ -41,7 +17,7 @@ static int __parse_port(const char* URI);
  *  @c - BrConnection to establish
  *  @return BR_NET_STATUS - connection status
  */
-static int __try_ssl(BrConnection* c);
+static int __try_ssl(BrSession* c);
 
 /**
  * Reads buffer_s bytes from the socket and writes to the given buffer. Uses SSL
@@ -51,7 +27,7 @@ static int __try_ssl(BrConnection* c);
  * @buffer_s - Max buffer
  * @return bytes written
  */
-static int __br_read(BrConnection* c, char* buffer, size_t buffer_s);
+static int __br_read(BrSession* c, char* buffer, size_t buffer_s);
 
 /**
  * Writes buffer_s bytes to the socket and sends. Returns number of bytes
@@ -61,32 +37,22 @@ static int __br_read(BrConnection* c, char* buffer, size_t buffer_s);
  * @buffer_s - Max buffer
  * @return bytes written
  */
-static int __br_write(BrConnection* c, char* buffer, size_t buffer_s);
+static int __br_write(BrSession* c, char* buffer, size_t buffer_s);
 
-BrConnection* br_connection_new(const char* uri)
+BR_NET_STATUS br_session_new(BrSession* c, const char* uri)
 {
-    if (uri == NULL) {
-        WARN(BR_NET_ERROR_INVALID_URI_STRING);
-        return NULL;
+    if (uri == NULL || !is_null_terminated(uri)) {
+        return ERROR(BR_NET_ERROR_INVALID_URI_STRING);
     }
-
-    BrConnection* c = calloc(sizeof(BrConnection), 1);
     int start_addr = 0;
-    c->protocol = __capture_protocol(uri, &start_addr);
+    c->protocol = capture_protocol(uri, &start_addr);
     if (c->protocol == BR_PROTOCOL_UNSUPPORTED) {
-        WARN(BR_PROTOCOL_UNSUPPORTED);
-        goto br_connection_new_error;
+        return ERROR(BR_NET_ERROR_INVALID_PROTOCOL);
     }
-    if (__setup_address(c, uri, start_addr)) {
-        goto br_connection_new_error;
-    }
-    return c;
-br_connection_new_error:
-    free(c);
-    return NULL;
+    return __setup_address(c, uri, start_addr);
 }
 
-BR_NET_STATUS br_connect(BrConnection* c)
+BR_NET_STATUS br_connect(BrSession* c)
 {
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
@@ -101,11 +67,18 @@ BR_NET_STATUS br_connect(BrConnection* c)
     if (connect(sockfd, (struct sockaddr*)&address, sizeof(address)) != 0) {
         return ERROR(BR_NET_ERROR_CONNECTION_FAILED);
     }
-    return __try_ssl(c);
+    BR_NET_STATUS ssl_status = __try_ssl(c);
+    return ssl_status != BR_NET_ERROR_SSL_DISABLED
+        ? ssl_status
+        : BR_NET_STATUS_OK;
 }
 
-BR_NET_STATUS br_request(BrConnection* c, const char* buffer, size_t buffer_s)
+void br_request(BrSession* c, const char* buffer, size_t buffer_s)
 {
+    // TODO do this
+    WARN(REQUESTING);
+    sleep(10);
+    WARN(SLEEP ENDED);
     int attempt = BR_REQUEST_SIZE_ATTEMPT;
     size_t total_w = 0;
     size_t frame_w;
@@ -133,15 +106,13 @@ BR_NET_STATUS br_request(BrConnection* c, const char* buffer, size_t buffer_s)
         c->resp = total_resp;
         c->resp_s += frame_r;
     }
-    return BR_NET_STATUS_OK;
 }
 
-size_t br_resolve(BrConnection* c, char** buffer, bool keep)
+size_t br_resolve(BrSession* c, char** buffer, bool keep)
 {
-    *buffer = c->resp;
-    size_t buffer_s = c->resp_s;
-    c->resp = NULL;
-    c->resp_s = 0;
+    if (buffer != NULL) {
+        *buffer = c->resp;
+    }
     if (!keep) {
         if (c->ssl.enabled) {
             SSL_free(c->ssl.ssl);
@@ -150,30 +121,10 @@ size_t br_resolve(BrConnection* c, char** buffer, bool keep)
         close(c->sockfd);
         free(c->host);
     }
-    return buffer_s;
-}
-void br_protocol_print(BrConnection* c)
-{
-    printf("{host:%s,ip: %s, port: %d, protocol: %d, ssl_enabled: %d}\n",
-        c->host, c->ip, c->port, c->protocol, c->ssl.enabled);
+    return c->resp_s;
 }
 
-static int __parse_port(const char* URI)
-{
-    char* port_str;
-    // Check if the given Ip Address
-    if ((port_str = strstr(URI, ":")), port_str != NULL) {
-        char* endptr = NULL;
-        int p = strtol(&port_str[1], &endptr, 10);
-        if (*endptr == 0) {
-            port_str[0] = 0;
-            return p;
-        }
-    }
-    return -1;
-}
-
-static int __try_ssl(BrConnection* c)
+static int __try_ssl(BrSession* c)
 {
     c->ssl.enabled = 0;
     if (c->protocol == BR_PROTOCOL_HTTP)
@@ -203,82 +154,36 @@ static int __try_ssl(BrConnection* c)
     return ERROR(BR_NET_STATUS_SSL_ENABLED);
 }
 
-static int __br_read(BrConnection* c, char* buffer, size_t buffer_s)
+static int __br_read(BrSession* c, char* buffer, size_t buffer_s)
 {
     return c->ssl.enabled ? SSL_read(c->ssl.ssl, buffer, buffer_s)
                           : recv(c->sockfd, buffer, buffer_s, 0);
 }
 
-static int __br_write(BrConnection* c, char* buffer, size_t buffer_s)
+static int __br_write(BrSession* c, char* buffer, size_t buffer_s)
 {
     return c->ssl.enabled ? SSL_write(c->ssl.ssl, buffer, buffer_s)
                           : send(c->sockfd, buffer, buffer_s, 0);
 }
 
-static int __is_ip_address(const char* input)
-{
-    char* input_d = strdup(input);
-    int count = 0;
-    char* token = strtok(input_d, ".");
-    while (token != NULL) {
-        int num = atoi(token);
-        if (num < 0 || num > 255) {
-            free(input_d);
-            return 0;
-        }
-        token = strtok(NULL, ".");
-        count++;
-    }
-    free(input_d);
-    return (count == 4);
-}
-
-static void __strip_colon(char* str)
-{
-    char* pos = strchr(str, ':');
-    if (pos != NULL) {
-        *pos = '\0';
-    }
-}
-
-static char* __uri_from_ip(const char* ip)
-{
-    struct in_addr addr;
-    inet_pton(AF_INET, ip, &addr);
-    struct hostent* host_entry = gethostbyaddr(&addr, sizeof(addr), AF_INET);
-    if (host_entry == NULL) {
-        return NULL;
-    }
-    return host_entry->h_name;
-}
-
-static char* __ip_from_uri(const char* hostname)
-{
-    struct hostent* host_entry = gethostbyname(hostname);
-    if (host_entry == NULL) {
-        return NULL;
-    }
-    return inet_ntoa(*((struct in_addr*)host_entry->h_addr_list[0]));
-}
-
-static BR_NET_STATUS __setup_address(BrConnection* c, const char* uri, int proto_idx)
+static BR_NET_STATUS __setup_address(BrSession* c, const char* uri, int proto_idx)
 {
     // if port can not be obtained from the URI, fallback to the protocols
     const char* uri_trimmed = uri + proto_idx;
-    int port = __parse_port(uri_trimmed);
+    int port = parse_port(uri_trimmed);
     char* uri_n = strdup(uri_trimmed);
     if (port != -1) {
         c->port = port;
-        __strip_colon(uri_n);
+        uri_strip(uri_n);
     } else {
         c->port = RequestTypePort[c->protocol];
     }
-    if (__is_ip_address(uri)) {
-        c->host = __uri_from_ip(uri_n);
+    if (is_ip(uri)) {
+        c->host = uri_from(uri_n);
         memcpy(&c->ip, uri, 16);
     } else {
         c->host = uri_n;
-        char* ip = __ip_from_uri(c->host);
+        char* ip = ip_from(c->host);
         if (ip == NULL) {
             free(uri_n);
             return ERROR(BR_NET_ERROR_IP_NOT_FOUND);
@@ -286,24 +191,4 @@ static BR_NET_STATUS __setup_address(BrConnection* c, const char* uri, int proto
         memcpy(&c->ip, ip, 16);
     }
     return BR_NET_STATUS_OK;
-}
-
-static BR_PROTOCOL __capture_protocol(const char* uri, int* start_addr)
-{
-    if (!strncmp("gemini", uri, 6)) {
-        // gemini://
-        *start_addr = 9;
-        return BR_PROTOCOL_GEMINI;
-    } else if (!strncmp("https", uri, 5)) {
-        // https://
-        *start_addr = 8;
-        return BR_PROTOCOL_HTTPS;
-    } else if (!strncmp("http", uri, 4)) {
-        *start_addr = 7;
-        return BR_PROTOCOL_HTTP;
-    } else if (!strncmp("gopher", uri, 6)) {
-        *start_addr = 9;
-        return BR_PROTOCOL_GOPHER;
-    }
-    return BR_PROTOCOL_UNSUPPORTED;
 }
