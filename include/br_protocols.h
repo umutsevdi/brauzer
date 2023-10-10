@@ -14,6 +14,7 @@
 #include <glib.h>
 typedef enum {
     BR_PRT_HTTP_OK = 0,
+    BR_PRT_GEM_OK = 0,
     BR_PRT_HTTP_NO_STATUS_CODE,
     BR_PRT_HTTP_INVALID_HEADER,
     BR_PRT_HTTP_INVALID_HEADERS,
@@ -27,9 +28,11 @@ typedef enum {
     BR_PRT_HTTP_ERROR_SSL_CONNECTION,
     BR_PRT_HTTP_ERROR_CONNECTION_FAILED,
     BR_PRT_HTTP_ERROR_SEND,
-    BR_PRT_GEMINI_OK,
-    BR_PRT_GEMINI_INVALID_HEADER,
-    BR_PRT_GEMINI_NON_INPUT_POST_TEXT,
+    BR_PRT_GEM_ERROR_INVALID_HEADER,
+    BR_PRT_GEM_ERROR_POLL_BODY,
+    BR_PRT_GEM_ERROR_INVALID_INPUT,
+    BR_PRT_GEM_REQUEST_BODY,
+
 } BR_PRT_STATUS;
 
 /******************************************************************************
@@ -52,14 +55,13 @@ typedef struct {
 } BrHttpResponse;
 
 #define BR_HTTP_RESP_UNWRAP(r)                                                 \
-    "BrHttpResponse{status:%d, body: %s, full_size: %ld}", (r)->status_code,   \
+    "BrHttpResponse{status:%d, body: %s, full_size: %ld}\n", (r)->status_code, \
         (r)->body, (r)->__full_text_s
 
 /**
  * Parses the data from the connection and converts it into a HttpResponse
  */
-BR_PRT_STATUS br_http_response_new(BrHttpResponse* h_resp, char* resp,
-                                   size_t resp_s);
+BR_PRT_STATUS br_http_response_new(BrSession* s, BrHttpResponse* h_resp);
 void br_http_response_destroy(BrHttpResponse* r);
 
 /**
@@ -77,29 +79,43 @@ void br_http_set_req_headers(const char* host, char* buffer, size_t buffer_s,
 
 typedef enum {
     BR_GEMINI_RESP_INPUT = 10,
-    BR_GEMINI_RESP_OK = 20,
-    BR_GEMINI_RESP_REDIRECT = 30,
-    BR_GEMINI_RESP_FAIL_TMP = 40,
-    BR_GEMINI_RESP_FAIL_PERMA = 50,
-    BR_GEMINI_RESP_CERT_REQ = 60,
-
+    BR_GEMINI_RESP_SUCCESS = 20,
+    BR_GEMINI_RESP_REDIRECT_TEMPORARY = 30,
+    BR_GEMINI_RESP_REDIRECT_PERMANENT = 31,
+    BR_GEMINI_RESP_TEMPORARY_FAILURE = 40,
+    BR_GEMINI_RESP_SERVER_UNAVAILABLE = 41,
+    BR_GEMINI_RESP_CGI_ERROR = 42,
+    BR_GEMINI_RESP_PROXY_ERROR = 43,
+    BR_GEMINI_RESP_SLOW_DOWN = 44,
+    BR_GEMINI_RESP_PERMANENT_FAILURE = 50,
+    BR_GEMINI_RESP_NOT_FOUND = 51,
+    BR_GEMINI_RESP_GONE = 52,
+    BR_GEMINI_RESP_PROXY_REQUEST_REFUSED = 53,
+    BR_GEMINI_RESP_BAD_REQUEST = 59,
+    BR_GEMINI_RESP_CLIENT_CERTIFICATE_REQUIRED = 60,
+    BR_GEMINI_RESP_CERTIFICATE_NOT_AUTHORISED = 61,
+    BR_GEMINI_RESP_CERTIFICATE_NOT_VALID = 62,
+    BR_GEMINI_RESP_CERTIFICATE_REQUIRED = 63,
+    BR_GEMINI_RESP_SENSITIVE_INPUT = 70,
+    BR_GEMINI_RESP_SENSITIVE_INPUT_WITHOUT_TLS = 71,
+    BR_GEMINI_RESP_SENSITIVE_INPUT_FORM = 72,
+    BR_GEMINI_RESP_SENSITIVE_INPUT_FORM_WITHOUT_TLS = 73
 } BR_GEMINI_RESP;
 
 typedef struct {
     int status_number;
     BR_GEMINI_RESP status_code;
-    char* mime;
-    char* question;
+    char* header;
     char* body;
+    size_t body_s;
     char* __full_text;
     size_t __full_text_s;
 } BrGemResponse;
 
 #define BR_GEM_RESP_UNWRAP(r)                                                  \
-    "BrGemResponse{status:%d,mime: %s,query: %s, body: %s, full_size: %ld}",   \
-        (r)->status_number, (r)->mime, (r)->question, (r)->body,               \
-        (r)->__full_text_s
+    "BrGemResponse{status:%d,header: %s, body: %s, full_size: %ld}\n",         \
+        (r)->status_number, (r)->header, (r)->body, (r)->__full_text_s
 
-BR_PRT_STATUS br_gemini_response_new(BrGemResponse* gem_r, char* resp,
-                                     size_t resp_s);
-void br_gemini_response_destroy(BrGemResponse* r);
+BR_PRT_STATUS br_gem_response_new(BrSession* s, BrGemResponse* gem_r);
+BR_PRT_STATUS br_gem_poll(BrSession* s, BrGemResponse* r);
+void br_gem_response_destroy(BrGemResponse* r);

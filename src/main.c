@@ -2,6 +2,7 @@
 #include "../include/br_protocols.h"
 #include "br_net.h"
 #include "br_protocols.h"
+#include <stdio.h>
 
 int main(int argc, char* argv[])
 {
@@ -20,14 +21,12 @@ int main(int argc, char* argv[])
         br_http_set_req_headers(c.host, msg + written, 4096 - written, true);
     PRINT("REQUEST: %s", , msg);
     BR_NET_STATUS status = br_request(&c, msg, strnlen(msg, 4096));
-    if (!status)
+    if (status)
         return 1;
-    char* str;
-    size_t bytes = br_resolve(&c, &str, true);
     if (c.protocol != BR_PROTOCOL_GEMINI) {
         BrHttpResponse http_resp;
-        BR_PRT_STATUS status = br_http_response_new(&http_resp, str, bytes);
-        if (!status)
+        BR_PRT_STATUS status = br_http_response_new(&c, &http_resp);
+        if (status)
             return status;
         printf("{%s}\n", http_resp.body);
         br_http_response_destroy(&http_resp);
@@ -39,22 +38,19 @@ int main(int argc, char* argv[])
                                     keep);
             PRINT("REQUEST:%s", , msg);
             br_request(&c, msg, strnlen(msg, 4096));
-            char* str;
-            size_t bytes = br_resolve(&c, &str, keep);
             BrHttpResponse r;
-            BR_PRT_STATUS status = br_http_response_new(&r, str, bytes);
+            BR_PRT_STATUS status = br_http_response_new(&c, &r);
             if (!status)
                 return status;
             printf(BR_HTTP_RESP_UNWRAP(&r));
             br_http_response_destroy(&r);
         }
     } else {
-        BrGemResponse gem_resp;
-        BR_PRT_STATUS status = br_gemini_response_new(&gem_resp, str, bytes);
-        if (!status)
-            return status;
+        BrGemResponse gem_resp = {0};
+        BR_PRT_STATUS status = br_gem_response_new(&c, &gem_resp);
         printf(BR_GEM_RESP_UNWRAP(&gem_resp));
-        br_gemini_response_destroy(&gem_resp);
+        br_gem_response_destroy(&gem_resp);
     }
+    br_close(&c);
     return 0;
 }

@@ -44,6 +44,8 @@ BR_NET_STATUS br_session_new(BrSession* c, const char* uri)
     }
     int start_addr = 0;
     c->protocol = capture_protocol(uri, &start_addr);
+    c->resp = NULL;
+    c->resp_s = 0;
     if (c->protocol == BR_PROTOCOL_UNSUPPORTED) {
         return ERROR(BR_NET_ERROR_INVALID_PROTOCOL);
     }
@@ -97,29 +99,23 @@ BR_NET_STATUS br_request(BrSession* c, const char* buffer, size_t buffer_s)
             memcpy(total_resp, c->resp, c->resp_s);
         }
         memcpy(&total_resp[c->resp_s], frame, frame_r);
-        free(c->resp);
         c->resp = total_resp;
         c->resp_s += frame_r;
     }
-    if (total_w == 0 || c->resp_s == 0)
+    if ((total_w == 0 && buffer_s != 0) || c->resp_s == 0)
         return ERROR(BR_ERROR_BROKEN_CONNECTION);
     return BR_NET_STATUS_OK;
 }
 
-size_t br_resolve(BrSession* c, char** buffer, bool keep)
+void br_close(BrSession* c)
 {
-    if (buffer != NULL) {
-        *buffer = c->resp;
+    if (c->ssl.enabled) {
+        SSL_free(c->ssl.ssl);
+        SSL_CTX_free(c->ssl.ctx);
     }
-    if (!keep) {
-        if (c->ssl.enabled) {
-            SSL_free(c->ssl.ssl);
-            SSL_CTX_free(c->ssl.ctx);
-        }
-        close(c->sockfd);
-        free(c->host);
-    }
-    return c->resp_s;
+    close(c->sockfd);
+    free(c->host);
+    memset(c, 0, sizeof(BrSession));
 }
 
 static int _try_ssl(BrSession* c)

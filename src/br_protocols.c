@@ -1,5 +1,7 @@
 #include "../include/br_protocols.h"
+#include "br_net.h"
 #include "br_protocols.h"
+#include <string.h>
 
 /******************************************************************************
                                   HTTP
@@ -19,12 +21,11 @@
  */
 BR_PRT_STATUS _get_links(BrHttpResponse* r);
 
-BR_PRT_STATUS br_http_response_new(BrHttpResponse* h_resp, char* resp,
-                                   size_t resp_s)
+BR_PRT_STATUS br_http_response_new(BrSession* s, BrHttpResponse* h_resp)
 {
     char status_code_str[255];
-    char* l_begin = resp;
-    char* l_end = resp;
+    char* l_begin = s->resp;
+    char* l_end = s->resp;
     if ((l_end = strstr(l_begin, "\r\n")) != NULL) {
         float _v;
         if (sscanf(l_begin, "HTTP/%f %d %s\r\n", &_v, &h_resp->status_code,
@@ -100,60 +101,61 @@ void br_http_set_req_headers(const char* host, char* buffer, size_t buffer_s,
  *                                GEMINI
  *****************************************************************************/
 
-static BR_PRT_STATUS _parse_gem_headers(char* resp, size_t resp_s,
-                                        const char* endptr, BrGemResponse* r);
+static BR_PRT_STATUS _parse_gem_headers(const char* endptr, BrGemResponse* r);
 
-BR_PRT_STATUS br_gemini_response_new(BrGemResponse* gem_r, char* resp,
-                                     size_t resp_s)
+BR_PRT_STATUS br_gem_response_new(BrSession* s, BrGemResponse* gem_r)
 {
-    char* l_begin = resp;
-    char* l_end = resp;
+    gem_r->__full_text = s->resp;
+    gem_r->__full_text_s = s->resp_s;
+    gem_r->header = NULL;
+    char* l_begin = s->resp;
+    char* l_end;
     if ((l_end = strstr(l_begin, "\r\n")) != NULL) {
-        return _parse_gem_headers(resp, resp_s, l_end + 2, gem_r);
-    }
-    br_gemini_response_destroy(gem_r);
-    return ERROR(BR_PRT_GEMINI_INVALID_HEADER);
-}
-
-void br_gemini_response_destroy(BrGemResponse* r)
-{
-    free(r->__full_text);
-    free(r->mime);
-}
-
-static BR_PRT_STATUS _parse_gem_headers(char* resp, size_t resp_s,
-                                        const char* endptr, BrGemResponse* r)
-{
-    const int max_len = endptr - resp;
-    char* str = resp;
-    int i = 0, parse_idx = 0;
-    while (i < max_len) {
-        if (resp[i] == ' ') {
-            char code_arr[2];
-            switch (parse_idx) {
-            case 0: /* Parse return code */
-                memcpy(code_arr, str, 2);
-                r->status_number = strtol(code_arr, NULL, 10);
-                r->status_code = (r->status_number / 10) * 10;
-                parse_idx++;
-                str = resp + i + 1;
-                break;
-            case 1: /* Parse file name */
-                r->mime = strndup(str, i - (str - resp + 1));
-                str = resp + i + 1;
-                break;
-            case 2:
-                if (r->status_code != BR_GEMINI_RESP_INPUT) {
-                    return ERROR(BR_PRT_GEMINI_NON_INPUT_POST_TEXT);
-                }
-                r->question = strndup(str, i - (str - resp + 1));
-                break;
-            }
+        BR_PRT_STATUS status = _parse_gem_headers(l_end + 2, gem_r);
+        if (status == BR_PRT_GEM_REQUEST_BODY) {
+            return br_gem_poll(s, gem_r);
         }
-        i++;
+        return status;
     }
-    r->body = resp + i;
-    r->__full_text = resp;
-    r->__full_text_s = resp_s;
-    return BR_PRT_GEMINI_OK;
+    br_gem_response_destroy(gem_r);
+    return ERROR(BR_PRT_GEM_ERROR_INVALID_HEADER);
+}
+
+void br_gem_response_destroy(BrGemResponse* r)
+{
+    if (r->__full_text != NULL)
+        free(r->__full_text);
+    if (r->header != NULL)
+        free(r->header);
+    if (r->body != NULL)
+        free(r->body);
+}
+
+static BR_PRT_STATUS _parse_gem_headers(const char* endptr, BrGemResponse* r)
+{
+    const int max_len = endptr - r->__full_text;
+    char* str = r->__full_text;
+
+    /* Parse the protocol number */
+    char code_arr[] = {0, 0, 0};
+    memcpy(code_arr, str, 2);
+    r->status_number = strtol(code_arr, NULL, 10);
+    r->status_code = (BR_GEMINI_RESP)r->status_number;
+
+    str += 3;
+    /* Parse the remaining value to the header */
+    r->header = strndup(str, max_len - 5);
+    r->header[max_len - 5] = 0;
+    r->body = r->__full_text + max_len;
+    return r->__full_text_s == max_len ? BR_PRT_GEM_REQUEST_BODY
+                                       : BR_PRT_GEM_OK;
+}
+
+BR_PRT_STATUS br_gem_poll(BrSession* s, BrGemResponse* r)
+{
+    if (br_request(s, "", 0))
+        return BR_PRT_GEM_ERROR_POLL_BODY;
+    r->body = s->resp;
+    r->body_s = s->resp_s;
+    return BR_PRT_GEM_OK;
 }

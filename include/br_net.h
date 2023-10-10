@@ -58,7 +58,7 @@ typedef struct {
 #define BR_SESSION_UNWRAP(r)                                                   \
     "BrSession{host: %s, ip:%s, port: %d, protocol %d,"                        \
     "BrSessionSsl{enabled: %c, SSL: %p, SSL_Ctx: %p},"                         \
-    "resp_s: %ld}",                                                            \
+    "resp_s: %ld}\n",                                                          \
         (r)->host, (r)->ip, (r)->port, (r)->protocol,                          \
         (r)->ssl.enabled ? 'T' : 'F', (r)->ssl.ssl, (r)->ssl.ctx, (r)->resp_s
 
@@ -102,13 +102,8 @@ BR_NET_STATUS br_connect(BrSession* c);
  * - BR_ERROR_BROKEN_CONNECTION
  */
 BR_NET_STATUS br_request(BrSession* c, const char* buffer, size_t buffer_s);
+
 /**
- * Resolves the given session, and writes the received data to the
- * buffer. Returns the new size of the buffer.
- * - If keep is set to false, also closes the connection.
- * @buffer - buffer pointer to assign. It will be filled with
- * address of the stored response.
- * @keep - whether to keep the connection alive or not
- * @return size of the newly allocated buffer
+ * Closes the session
  */
-size_t br_resolve(BrSession* c, char** buffer, bool keep);
+void br_close(BrSession* c);
