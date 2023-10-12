@@ -49,6 +49,7 @@ BR_NET_STATUS br_session_new(BrSession* c, const char* uri)
     if (c->protocol == BR_PROTOCOL_UNSUPPORTED) {
         return ERROR(BR_NET_ERROR_INVALID_PROTOCOL);
     }
+    c->__uri = uri;
     return _setup_address(c, uri, start_addr);
 }
 
@@ -74,6 +75,8 @@ BR_NET_STATUS br_connect(BrSession* c)
 
 BR_NET_STATUS br_request(BrSession* c, const char* buffer, size_t buffer_s)
 {
+    c->req = strndup(buffer, buffer_s);
+    c->req_s = buffer_s;
     int attempt = BR_REQUEST_SIZE_ATTEMPT;
     size_t total_w = 0;
     int frame_w;
@@ -115,6 +118,8 @@ void br_close(BrSession* c)
     }
     close(c->sockfd);
     free(c->host);
+    if (c->req != NULL)
+        free(c->req);
     memset(c, 0, sizeof(BrSession));
 }
 

@@ -18,16 +18,15 @@
 #define MAX_URI_LENGTH 4096
 #define MAXLINE 256
 #define PRINT(FMT, ARGS...) printf(__FILE__ #FMT "\r\n" ARGS)
-#define WARN(CODE)                                         \
-    do {                                                   \
-        fprintf(stderr, __FILE__ "#%s():%d " #CODE "\r\n", \
-                __func__, __LINE__);                       \
+#define WARN(CODE)                                                             \
+    do {                                                                       \
+        fprintf(stderr, __FILE__ "#%s():%d " #CODE "\r\n", __func__,           \
+                __LINE__);                                                     \
     } while (0)
 
-#define ERROR(CODE) (fprintf(stderr,                            \
-                             __FILE__ "#%s():%d " #CODE "\r\n", \
-                             __func__, __LINE__),               \
-                     CODE)
+#define ERROR(CODE)                                                            \
+    (fprintf(stderr, __FILE__ "#%s():%d " #CODE "\r\n", __func__, __LINE__),   \
+     CODE)
 
 typedef enum BR_NET_PROTOCOL {
     BR_PROTOCOL_GOPHER,
@@ -67,3 +66,9 @@ void get_os(char* os, size_t os_s);
  * addr will be 9, because that's where the domain starts('w')
  */
 BR_PROTOCOL capture_protocol(const char* uri, int* start_addr);
+
+/**
+ * Returns an absolute path to request. From the URI and the request path
+ * @return - a dynamically allocated string
+ */
+char* to_abs_path(const char* uri, const char* request_path);

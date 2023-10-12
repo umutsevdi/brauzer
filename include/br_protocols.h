@@ -31,6 +31,7 @@ typedef enum {
     BR_PRT_GEM_ERROR_INVALID_HEADER,
     BR_PRT_GEM_ERROR_POLL_BODY,
     BR_PRT_GEM_ERROR_INVALID_INPUT,
+    BR_PRT_GEM_ERROR_REDIRECT,
     BR_PRT_GEM_REQUEST_BODY,
 
 } BR_PRT_STATUS;
@@ -47,6 +48,8 @@ typedef enum {
 } BR_PRT_HTTP_TYPES;
 
 typedef struct {
+    char* req;
+    size_t req_s;
     int status_code;
     GHashTable* headers;
     char* body;
@@ -103,6 +106,8 @@ typedef enum {
 } BR_GEMINI_RESP;
 
 typedef struct {
+    char* req;
+    size_t req_s;
     int status_number;
     BR_GEMINI_RESP status_code;
     char* header;
@@ -119,3 +124,7 @@ typedef struct {
 BR_PRT_STATUS br_gem_response_new(BrSession* s, BrGemResponse* gem_r);
 BR_PRT_STATUS br_gem_poll(BrSession* s, BrGemResponse* r);
 void br_gem_response_destroy(BrGemResponse* r);
+
+/******************************************************************************
+                                GOPHER
+*****************************************************************************/

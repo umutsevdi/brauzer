@@ -51,8 +51,11 @@ typedef struct {
     BR_PROTOCOL protocol;
     BrSessionSsl ssl;
     char* host;
+    char* req;
+    size_t req_s;
     char* resp;
     size_t resp_s;
+    const char* __uri;
 } BrSession;
 
 #define BR_SESSION_UNWRAP(r)                                                   \

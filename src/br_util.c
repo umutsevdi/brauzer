@@ -61,6 +61,21 @@ char* ip_from(const char* hostname)
     return inet_ntoa(*((struct in_addr*)host_entry->h_addr_list[0]));
 }
 
+char* to_abs_path(const char* uri, const char* request_path)
+{
+    if (!is_null_terminated(uri) || !is_null_terminated(request_path))
+        return NULL;
+    if (strstr(request_path, "://") == NULL)
+        return strdup(request_path);
+    const char* idx = request_path[0] != '/' ? request_path : request_path + 1;
+    size_t uri_s = strlen(uri);
+    size_t idx_s = strlen(idx);
+    char* r = calloc(sizeof(char), uri_s + idx_s);
+    memcpy(r, uri, uri_s);
+    memcpy(r + uri_s, idx, idx_s);
+    return r;
+}
+
 int parse_port(const char* URI)
 {
     char* port_str;// Check if the given Ip Address

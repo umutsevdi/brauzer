@@ -49,6 +49,7 @@ int main(int argc, char* argv[])
         BrGemResponse gem_resp = {0};
         BR_PRT_STATUS status = br_gem_response_new(&c, &gem_resp);
         printf(BR_GEM_RESP_UNWRAP(&gem_resp));
+        printf("%s\n", gem_resp.body);
         br_gem_response_destroy(&gem_resp);
     }
     br_close(&c);
