@@ -58,8 +58,8 @@ typedef struct {
 } BrHttpResponse;
 
 #define BR_HTTP_RESP_UNWRAP(r)                                                 \
-    "BrHttpResponse{status:%d, body: %s, full_size: %ld}\n", (r)->status_code, \
-        (r)->body, (r)->__full_text_s
+    "BrHttpResponse[status:%d, full_size: %ld]\n%s\n", (r)->status_code,       \
+        (r)->__full_text_s, (r)->body
 
 /**
  * Parses the data from the connection and converts it into a HttpResponse
@@ -118,8 +118,8 @@ typedef struct {
 } BrGemResponse;
 
 #define BR_GEM_RESP_UNWRAP(r)                                                  \
-    "BrGemResponse{status:%d,header: %s, body: %s, full_size: %ld}\n",         \
-        (r)->status_number, (r)->header, (r)->body, (r)->__full_text_s
+    "BrGemResponse[status:%d,header: %s,full_size: %ld]\n %s\n",               \
+        (r)->status_number, (r)->header, (r)->__full_text_s, (r)->body
 
 BR_PRT_STATUS br_gem_response_new(BrSession* s, BrGemResponse* gem_r);
 BR_PRT_STATUS br_gem_poll(BrSession* s, BrGemResponse* r);

@@ -128,10 +128,6 @@ static int _try_ssl(BrSession* c)
     c->ssl.enabled = 0;
     if (c->protocol == BR_PROTOCOL_HTTP)
         return ERROR(BR_NET_ERROR_SSL_DISABLED);
-    SSL_library_init();
-    OpenSSL_add_all_algorithms();
-    SSL_load_error_strings();
-
     c->ssl.ctx = SSL_CTX_new(SSLv23_client_method());
     if (!c->ssl.ctx) {
         return ERROR(BR_NET_ERROR_SSL_CONTEXT);

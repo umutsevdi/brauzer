@@ -148,7 +148,7 @@ void br_gem_response_destroy(BrGemResponse* r)
 
 static BR_PRT_STATUS _parse_gem_headers(const char* endptr, BrGemResponse* r)
 {
-    const int max_len = endptr - r->__full_text;
+    const size_t max_len = endptr - r->__full_text;
     char* str = r->__full_text;
 
     /* Parse the protocol number */
