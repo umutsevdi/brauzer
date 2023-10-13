@@ -3,6 +3,7 @@
 #include "br_protocols.h"
 #include "br_util.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #define MEMMOVE_REQ(s, r)                                                      \
     r->req = s->req;                                                           \
@@ -112,7 +113,7 @@ void br_http_set_req_headers(const char* host, char* buffer, size_t buffer_s,
  *****************************************************************************/
 
 static BR_PRT_STATUS _parse_gem_headers(const char* endptr, BrGemResponse* r);
-void _br_gem_get_data(BrSession* s, BrGemResponse* r);
+BR_PRT_STATUS _br_gem_get_data(BrSession* s, BrGemResponse* r);
 
 BR_PRT_STATUS br_gem_response_new(BrSession* s, BrGemResponse* gem_r)
 {
@@ -124,11 +125,9 @@ BR_PRT_STATUS br_gem_response_new(BrSession* s, BrGemResponse* gem_r)
     char* l_end;
     if ((l_end = strstr(l_begin, "\r\n")) != NULL) {
         BR_PRT_STATUS status = _parse_gem_headers(l_end + 2, gem_r);
-        if (status == BR_PRT_GEM_REQUEST_BODY) {
-            if (gem_r->status_code != BR_GEMINI_RESP_SUCCESS)
-                return br_gem_poll(s, gem_r);
-            printf(BR_GEM_RESP_UNWRAP(gem_r));
-            _br_gem_get_data(s, gem_r);
+        if (status == BR_PRT_GEM_STATUS_REQUEST_BODY) {
+            status = br_gem_poll(s, gem_r);
+            /*TODO potential infinite loop  */
         }
         return status;
     }
@@ -144,8 +143,6 @@ void br_gem_response_destroy(BrGemResponse* r)
         free(r->__full_text);
     if (r->header != NULL)
         free(r->header);
-    if (r->body != NULL)
-        free(r->body);
     memset(r, 0, sizeof(BrGemResponse));
 }
 
@@ -165,49 +162,50 @@ static BR_PRT_STATUS _parse_gem_headers(const char* endptr, BrGemResponse* r)
     r->header = strndup(str, max_len - 5);
     r->header[max_len - 5] = 0;
     r->body = r->__full_text + max_len;
-    return r->__full_text_s == max_len ? BR_PRT_GEM_REQUEST_BODY
+    return r->__full_text_s == max_len ? BR_PRT_GEM_STATUS_REQUEST_BODY
                                        : BR_PRT_GEM_OK;
-}
-
-void _br_gem_get_data(BrSession* s, BrGemResponse* r)
-{
-    if (br_request(s, "", 0))
-        return;
-    r->body = s->resp;
-    r->body_s = s->resp_s;
-    s->resp = NULL;
-    s->resp_s = 0;
-    printf("%s\n", r->body);
-    MEMMOVE_REQ(s, r);
 }
 
 BR_PRT_STATUS br_gem_poll(BrSession* s, BrGemResponse* r)
 {
+    printf(BR_GEM_RESP_UNWRAP(r));
+    char msg[MAX_URI_LENGTH] = {0};
     switch (r->status_code) {
+    case BR_GEMINI_RESP_SUCCESS:
+        if (br_request(s, "", 0))
+            return ERROR(BR_PRT_GEM_ERROR_POLL_BODY);
+        br_gem_response_new(s, r);
+        break;
     case BR_GEMINI_RESP_INPUT:
-        /* do input case*/
+        memcpy(msg, r->req, r->req_s - 2);
+        memcpy(msg + r->req_s - 2, "?dogs\r\n", 7);
+        char* uri = strdup(s->__uri);
+        br_close(s);
+        br_gem_response_destroy(r);
+        if (br_session_new(s, uri) || br_connect(s)
+            || br_request(s, msg, strlen(msg))) {
+            free(uri);
+            return ERROR(BR_PRT_GEM_ERROR_INVALID_INPUT);
+        }
+        free(uri);
+        br_gem_response_new(s, r);
         break;
     case BR_GEMINI_RESP_REDIRECT_TEMPORARY:
     case BR_GEMINI_RESP_REDIRECT_PERMANENT:
-        if (r->header)
-            return BR_PRT_GEM_ERROR_INVALID_HEADER;
-        char* page = strdup(r->header);
-        const char* uri = s->__uri;
+        if (!r->header)
+            return ERROR(BR_PRT_GEM_ERROR_INVALID_HEADER);
         br_close(s);
         br_gem_response_destroy(r);
-        if (br_session_new(s, uri))
-            return BR_PRT_GEM_ERROR_REDIRECT;
-        if (br_connect(s))
-            return BR_PRT_GEM_ERROR_REDIRECT;
-
-        char* req = to_abs_path(uri, r->header);
-        if (br_request(s, req, strlen(req)))
-            return BR_PRT_GEM_ERROR_REDIRECT;
-        br_gem_response_new(s, r);
+        if (br_session_new(s, s->__uri) || br_connect(s))
+            return ERROR(BR_PRT_GEM_ERROR_REDIRECT);
+        char* req = to_abs_path(s->__uri, r->header);
+        BR_NET_STATUS ns = br_request(s, req, strlen(req));
         free(req);
+        if (ns)
+            return ERROR(BR_PRT_GEM_ERROR_REDIRECT);
+        br_gem_response_new(s, r);
         break;
-    default: return BR_PRT_GEM_OK;
+    default: break;
     }
-
     return BR_PRT_GEM_OK;
 }

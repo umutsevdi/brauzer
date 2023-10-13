@@ -150,7 +150,7 @@ static int _try_ssl(BrSession* c)
         return ERROR(BR_NET_ERROR_SSL_CONNECTION);
     }
     c->ssl.enabled = 1;
-    return ERROR(BR_NET_STATUS_SSL_ENABLED);
+    return BR_NET_STATUS_SSL_ENABLED;
 }
 
 static ssize_t _br_read(BrSession* c, char* buffer, int buffer_s)

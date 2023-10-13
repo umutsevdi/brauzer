@@ -34,8 +34,8 @@ various web protocols.
     - [ ] Gemini:
         - [x] Success
         - [x] Polling
-        - [ ] Input
-        - [ ] Redirect
+        - [x] Input
+        - [x] Redirect
         - [ ] Gemtext Parser
     - [ ] Gopher:
     - [ ] FTP/SFTP:
