@@ -21,7 +21,7 @@ various web protocols.
 - [x] Protocol Spesific Calls
 - [x] User Agent
 - [x] URI Parser
-- [ ] CLI Interface
+- [x] CLI Interface
 - [ ] **Supported Protocols**:
     - [ ] HTTP
         - [x] HTTP 1.1 Polling
@@ -38,6 +38,8 @@ various web protocols.
         - [x] Redirect
         - [ ] Gemtext Parser
     - [ ] Gopher:
+        - [x] Protocol
+        - [ ] Parser
     - [ ] FTP/SFTP:
 #### User Interface:
 **STATUS**: Not started

@@ -59,11 +59,11 @@ typedef struct {
 } BrSession;
 
 #define BR_SESSION_UNWRAP(r)                                                   \
-    "BrSession{host: %s, ip:%s, port: %d, protocol %d,"                        \
+    "BrSession{host: %s, ip:%s, port: %d, protocol: %s,"                        \
     "BrSessionSsl{enabled: %c, SSL: %p, SSL_Ctx: %p},"                         \
-    "resp_s: %ld}\n",                                                          \
-        (r)->host, (r)->ip, (r)->port, (r)->protocol,                          \
-        (r)->ssl.enabled ? 'T' : 'F', (r)->ssl.ssl, (r)->ssl.ctx, (r)->resp_s
+    "req: %s}\n",                                                              \
+        (r)->host, (r)->ip, (r)->port, BR_PROTOCOL_S((r)->protocol),           \
+        (r)->ssl.enabled ? 'T' : 'F', (r)->ssl.ssl, (r)->ssl.ctx, (r)->req
 
 /**
  * Parses the given URI and sets up the given BrSession

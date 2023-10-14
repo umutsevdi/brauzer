@@ -1,11 +1,6 @@
 #include "br_util.h"
 #include "../include/br_util.h"
 
-#ifndef _WIN32
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <stdint.h>
-
 bool is_null_terminated(const char* str)
 {
     size_t i = 0;
@@ -38,39 +33,19 @@ void uri_strip(char* str)
 {
     char* pos = strchr(str, ':');
     if (pos != NULL)
-        *pos = '\0';
+        *pos = 0;
 }
 
-char* uri_from(const char* ip)
+const char* to_abs_path(const char* uri, const char* request_path)
 {
-    struct in_addr addr;
-    inet_pton(AF_INET, ip, &addr);
-    struct hostent* host_entry = gethostbyaddr(&addr, sizeof(addr), AF_INET);
-    if (host_entry == NULL) {
-        return NULL;
-    }
-    return host_entry->h_name;
-}
-
-char* ip_from(const char* hostname)
-{
-    struct hostent* host_entry = gethostbyname(hostname);
-    if (host_entry == NULL) {
-        return NULL;
-    }
-    return inet_ntoa(*((struct in_addr*)host_entry->h_addr_list[0]));
-}
-
-char* to_abs_path(const char* uri, const char* request_path)
-{
-    if (!is_null_terminated(uri) || !is_null_terminated(request_path))
+    static char r[MAX_URI_LENGTH];
+    if (!(is_null_terminated(uri) && is_null_terminated(request_path)))
         return NULL;
     if (strstr(request_path, "://") == NULL)
-        return strdup(request_path);
+        return request_path;
     const char* idx = request_path[0] != '/' ? request_path : request_path + 1;
     size_t uri_s = strlen(uri);
     size_t idx_s = strlen(idx);
-    char* r = calloc(sizeof(char), uri_s + idx_s);
     memcpy(r, uri, uri_s);
     memcpy(r + uri_s, idx, idx_s);
     return r;
@@ -109,6 +84,32 @@ BR_PROTOCOL capture_protocol(const char* uri, int* start_addr)
     }
     return BR_PROTOCOL_UNSUPPORTED;
 }
+
+#ifndef _WIN32
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <stdint.h>
+
+char* uri_from(const char* ip)
+{
+    struct in_addr addr;
+    inet_pton(AF_INET, ip, &addr);
+    struct hostent* host_entry = gethostbyaddr(&addr, sizeof(addr), AF_INET);
+    if (host_entry == NULL) {
+        return NULL;
+    }
+    return host_entry->h_name;
+}
+
+char* ip_from(const char* hostname)
+{
+    struct hostent* host_entry = gethostbyname(hostname);
+    if (host_entry == NULL) {
+        return NULL;
+    }
+    return inet_ntoa(*((struct in_addr*)host_entry->h_addr_list[0]));
+}
+
 #endif
 
 #ifdef _WIN32

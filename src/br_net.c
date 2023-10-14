@@ -126,8 +126,8 @@ void br_close(BrSession* c)
 static int _try_ssl(BrSession* c)
 {
     c->ssl.enabled = 0;
-    if (c->protocol == BR_PROTOCOL_HTTP)
-        return ERROR(BR_NET_ERROR_SSL_DISABLED);
+    if (c->protocol == BR_PROTOCOL_HTTP || c->protocol == BR_PROTOCOL_GOPHER)
+        return BR_NET_ERROR_SSL_DISABLED;
     c->ssl.ctx = SSL_CTX_new(SSLv23_client_method());
     if (!c->ssl.ctx) {
         return ERROR(BR_NET_ERROR_SSL_CONTEXT);

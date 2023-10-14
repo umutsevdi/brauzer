@@ -58,8 +58,8 @@ typedef struct {
 } BrHttpResponse;
 
 #define BR_HTTP_RESP_UNWRAP(r)                                                 \
-    "BrHttpResponse[status:%d, full_size: %ld]\n%s\n", (r)->status_code,       \
-        (r)->__full_text_s, (r)->body
+    "BrHttpResponse[status:%d, full_size: %ld]\n>> %s\n%s\n",                  \
+        (r)->status_code, (r)->__full_text_s, (r)->req, (r)->body
 
 /**
  * Parses the data from the connection and converts it into a HttpResponse
@@ -75,6 +75,8 @@ void br_http_response_destroy(BrHttpResponse* r);
  */
 void br_http_set_req_headers(const char* host, char* buffer, size_t buffer_s,
                              bool keep);
+
+void br_http_response_headers_print(GHashTable* t);
 
 /******************************************************************************
                                   GEMINI
@@ -118,13 +120,24 @@ typedef struct {
 } BrGemResponse;
 
 #define BR_GEM_RESP_UNWRAP(r)                                                  \
-    "BrGemResponse[status:%d,header: %s,full_size: %ld]\n %s\n",               \
-        (r)->status_number, (r)->header, (r)->__full_text_s, (r)->body
+    "BrGemResponse[status:%d,header: %s,full_size: %ld]\n>>%s\n %s\n",         \
+        (r)->status_number, (r)->header, (r)->__full_text_s, (r)->req,         \
+        (r)->body
 
-BR_PRT_STATUS br_gem_response_new(BrSession* s, BrGemResponse* gem_r);
+BR_PRT_STATUS br_gem_response_new(BrSession* s, BrGemResponse* r);
 BR_PRT_STATUS br_gem_poll(BrSession* s, BrGemResponse* r);
 void br_gem_response_destroy(BrGemResponse* r);
 
 /******************************************************************************
                                 GOPHER
 *****************************************************************************/
+
+typedef struct {
+    char* req;
+    size_t req_s;
+    char* body;
+    size_t body_s;
+} BrGopherResponse;
+
+void br_gph_response_new(BrSession* s, BrGopherResponse* r);
+void br_gph_response_destroy(BrGopherResponse* r);
