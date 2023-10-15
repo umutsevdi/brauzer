@@ -170,6 +170,7 @@ static BR_PRT_STATUS _parse_gem_headers(const char* endptr, BrGemResponse* r)
     r->header = strndup(str, max_len - 5);
     r->header[max_len - 5] = 0;
     r->body = r->__full_text + max_len;
+    r->body_s = r->__full_text_s - max_len;
     return r->__full_text_s == max_len ? BR_PRT_GEM_STATUS_REQUEST_BODY
                                        : BR_PRT_GEM_OK;
 }

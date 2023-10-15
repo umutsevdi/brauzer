@@ -1,6 +1,7 @@
 #include "../include/br_net.h"
 #include "../include/br_protocols.h"
 #include "br_protocols.h"
+#include "br_txt.h"
 #include "br_util.h"
 #include <stdio.h>
 
@@ -17,7 +18,6 @@ int run(const char* uri, const char* page)
     if (br_session_new(&c, uri)) {
         return 1;
     }
-    printf(BR_SESSION_UNWRAP(&c));
     br_connect(&c);
     char msg[4096] = {};
     int written;
@@ -35,6 +35,8 @@ int run(const char* uri, const char* page)
         break;
     default: return ERROR(BR_PROTOCOL_UNSUPPORTED);
     }
+    c.req = msg;
+    printf(BR_SESSION_UNWRAP(&c));
 
     printf(">> %s\n", msg);
     BR_NET_STATUS status = br_request(&c, msg, strnlen(msg, 4096));
@@ -49,7 +51,7 @@ int run(const char* uri, const char* page)
         if (status)
             return status;
         br_http_response_headers_print(http_resp.headers);
-        printf(BR_HTTP_RESP_UNWRAP(&http_resp));
+        printf(BrHttpResponse_unwrap(&http_resp));
         br_http_response_destroy(&http_resp);
         break;
     }
@@ -58,7 +60,10 @@ int run(const char* uri, const char* page)
         BR_PRT_STATUS status = br_gem_response_new(&c, &gem_resp);
         if (status)
             return 1;
-        printf(BR_GEM_RESP_UNWRAP(&gem_resp));
+        BrGemtext t;
+        br_gemtext_new(&t, gem_resp.body, gem_resp.body_s);
+        br_gemtext_print(&t);
+        br_gemtext_free(&t);
         br_gem_response_destroy(&gem_resp);
         break;
     }

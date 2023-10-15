@@ -23,14 +23,15 @@ OBJS := $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRCS))
 OBJS_TEST := $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRCS_TEST))
 
 # Main build target
-all: $(BUILDDIR)/build
+all: $(BUILDDIR)/brauzer
 test: $(BUILDDIR)/test
 
 # Rule to build the executable from object files
 $(BUILDDIR)/test: $(OBJS_TEST)
 	@mkdir -p $(BUILDDIR)
+	$(CC) $^ -o $@  $(CFLAGS)
 # Rule to build the executable from object files
-$(BUILDDIR)/build: $(OBJS)
+$(BUILDDIR)/brauzer: $(OBJS)
 	@mkdir -p $(BUILDDIR)
 	$(CC) $^ -o $@  $(CFLAGS)
 # Rule to build object files from source files

@@ -57,8 +57,8 @@ typedef struct {
     size_t __full_text_s;
 } BrHttpResponse;
 
-#define BR_HTTP_RESP_UNWRAP(r)                                                 \
-    "BrHttpResponse[status:%d, full_size: %ld]\n>> %s\n%s\n",                  \
+#define BrHttpResponse_unwrap(r)                                               \
+    "BrHttpResponse\n{status: %d\tfull_size: %ld\treq:\"%s\"}\n%s\n",            \
         (r)->status_code, (r)->__full_text_s, (r)->req, (r)->body
 
 /**
@@ -119,8 +119,9 @@ typedef struct {
     size_t __full_text_s;
 } BrGemResponse;
 
-#define BR_GEM_RESP_UNWRAP(r)                                                  \
-    "BrGemResponse[status:%d,header: %s,full_size: %ld]\n>>%s\n %s\n",         \
+#define BrGemResponse_unwrap(r)                                                \
+    "BrGemResponse\n{status: %d\theader: %s\tfull_size: %ld\treq:\"%s\"}\n "   \
+    "%s\n",                                                                    \
         (r)->status_number, (r)->header, (r)->__full_text_s, (r)->req,         \
         (r)->body
 
