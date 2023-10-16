@@ -1,18 +1,25 @@
 #include "br_util.h"
 #include "../include/br_util.h"
 
-bool is_null_terminated(const char* str)
+bool is_null_terminated(const char* str, ssize_t str_s)
 {
-    size_t i = 0;
-    while (i++ < MAX_URI_LENGTH) {
-        if (str[i] == 0)
+    if (str_s == -1)
+        str_s = MAX_URI_LENGTH;
+    if (!str)
+        return false;
+    ssize_t i = 0;
+    while (i++ < str_s) {
+        if (str[i] == 0) {
             return true;
+        }
     }
     return false;
 }
 
 bool is_ip(const char* input)
 {
+    if (!input)
+        return NULL;
     char* input_d = strdup(input);
     int count = 0;
     char* token = strtok(input_d, ".");
@@ -31,6 +38,8 @@ bool is_ip(const char* input)
 
 void uri_strip(char* str)
 {
+    if (!str)
+        return;
     char* pos = strchr(str, ':');
     if (pos != NULL)
         *pos = 0;
@@ -38,9 +47,9 @@ void uri_strip(char* str)
 
 const char* to_abs_path(const char* uri, const char* request_path)
 {
-    static char r[MAX_URI_LENGTH];
-    if (!(is_null_terminated(uri) && is_null_terminated(request_path)))
+    if (!(is_null_terminated(uri, -1) && is_null_terminated(request_path, -1)))
         return NULL;
+    static char r[MAX_URI_LENGTH];
     if (strstr(request_path, "://") == NULL)
         return request_path;
     const char* idx = request_path[0] != '/' ? request_path : request_path + 1;
@@ -53,6 +62,8 @@ const char* to_abs_path(const char* uri, const char* request_path)
 
 int parse_port(const char* URI)
 {
+    if (!URI)
+        return -1;
     char* port_str;// Check if the given Ip Address
     if ((port_str = strstr(URI, ":")), port_str != NULL) {
         char* endptr = NULL;
@@ -67,6 +78,8 @@ int parse_port(const char* URI)
 
 BR_PROTOCOL capture_protocol(const char* uri, int* start_addr)
 {
+    if (!uri)
+        return BR_PROTOCOL_UNSUPPORTED;
     if (!strncmp("gemini", uri, 6)) {
         // gemini://
         *start_addr = 9;
@@ -92,6 +105,8 @@ BR_PROTOCOL capture_protocol(const char* uri, int* start_addr)
 
 char* uri_from(const char* ip)
 {
+    if (!ip)
+        return NULL;
     struct in_addr addr;
     inet_pton(AF_INET, ip, &addr);
     struct hostent* host_entry = gethostbyaddr(&addr, sizeof(addr), AF_INET);
@@ -103,6 +118,8 @@ char* uri_from(const char* ip)
 
 char* ip_from(const char* hostname)
 {
+    if (!hostname)
+        return NULL;
     struct hostent* host_entry = gethostbyname(hostname);
     if (host_entry == NULL) {
         return NULL;

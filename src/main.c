@@ -67,6 +67,17 @@ int run(const char* uri, const char* page)
         br_gem_response_destroy(&gem_resp);
         break;
     }
+    case BR_PROTOCOL_GOPHER: {
+        BrGopherResponse g_resp = {0};
+        br_gph_response_new(&c, &g_resp);
+        if (status)
+            return 1;
+        BrGprtext t;
+        br_gprtext_new(&t, g_resp.body, g_resp.body_s);
+        br_gprtext_print(&t);
+        br_gph_response_destroy(&g_resp);
+        break;
+    }
     default: printf("RECEIVED: %s\n", c.resp);
     }
     br_close(&c);
@@ -86,7 +97,7 @@ int main(int argc, char* argv[])
     while (strncmp(msg, "q", 1) && strncmp(msg, "quit", 4)) {
         printf("> ");
         fgets(msg, 4096, stdin);
-        if (!is_null_terminated(msg))
+        if (!is_null_terminated(msg, -1))
             msg[MAX_URI_LENGTH - 1] = 0;
         char* c;
         if ((c = strchr(msg, ' ')) != NULL) {

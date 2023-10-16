@@ -31,15 +31,15 @@ various web protocols.
         - [ ] Redirect
         - [ ] HTML Parser
         - [ ] Link Analysis and Installation
-    - [ ] Gemini:
+    - [x] Gemini:
         - [x] Success
         - [x] Polling
         - [x] Input
         - [x] Redirect
-        - [ ] Gemtext Parser
-    - [ ] Gopher:
+        - [x] Gemtext Parser
+    - [x] Gopher:
         - [x] Protocol
-        - [ ] Parser
+        - [x] Parser
     - [ ] FTP/SFTP:
 #### User Interface:
 **STATUS**: Not started

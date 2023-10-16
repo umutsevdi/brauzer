@@ -107,3 +107,47 @@ char* _gtxt_space_trim(char* line)
         c++;
     return c;
 }
+
+void br_gprtext_new(BrGprtext* t, char* buffer, size_t buffer_s)
+{
+    size_t l_count = 0;
+    for (size_t i = 0; i < buffer_s; i++)
+        if (buffer[i] == '\n')
+            l_count++;
+    t->line_s = l_count;
+    t->line = calloc(l_count, sizeof(BrGprtextItem));
+    char* l;
+    size_t i = 0;
+    while (buffer != NULL) {
+        l = strsep(&buffer, "\n");
+        t->line[i].type = (BR_GPRTXT)l[0];
+        switch (l[0]) {
+        case BR_GPRTXT_ERROR:
+        case BR_GPRTXT_INFO: t->line[i].line = l + 1; break;
+        default:
+            t->line[i].line = _gtxt_space_trim(l + 1);
+            t->line[i].URI = strchr(t->line[i].line, '\t');
+            if (t->line[i].URI != NULL) {
+                *t->line[i].URI = 0;
+                t->line[i].URI++;
+            }
+        }
+        i++;
+    }
+}
+
+void br_gprtext_print(BrGprtext* t)
+{
+    printf("BrGophertext{line_s:%ld, line: [\n", t->line_s);
+    for (size_t i = 0; i < t->line_s; i++) {
+        printf(BrGprtextItem_unwrap(&(t->line[i])));
+    }
+    printf("]\n");
+}
+
+void br_gprtext_free(BrGprtext* t)
+{
+    free(t->line);
+    t->line_s = 0;
+    t->line = 0;
+}

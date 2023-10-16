@@ -42,9 +42,10 @@ typedef enum BR_NET_PROTOCOL {
      : p == BR_PROTOCOL_GOPHER ? "GOPHER"                                      \
                                : "UNDEFINED")
 
-/* Returns whether there is a NULL character within the first MAX_URI_LENGTH
+/* Returns whether there is a NULL character within the first str_s bytes. If 
+ * str_s is set to -1 it will search for the next MAX_URI_LENGTH bytes.
  * bytes or not */
-bool is_null_terminated(const char* str);
+bool is_null_terminated(const char* str, ssize_t str_s);
 /* Returns true if given string is a valid IPv4 address */
 bool is_ip(const char* input);
 /* Removes all characters starting from the first ':' */

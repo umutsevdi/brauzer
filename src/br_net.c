@@ -39,7 +39,7 @@ static ssize_t _br_write(BrSession* c, char* buffer, int buffer_s);
 
 BR_NET_STATUS br_session_new(BrSession* c, const char* uri)
 {
-    if (uri == NULL || !is_null_terminated(uri)) {
+    if (!is_null_terminated(uri, -1)) {
         return ERROR(BR_NET_ERROR_INVALID_URI_STRING);
     }
     int start_addr = 0;
