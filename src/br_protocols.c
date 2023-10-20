@@ -25,47 +25,71 @@
  * Parses the HTML body to find subsequent links to pull
  */
 BR_PRT_STATUS _get_links(BrHttpResponse* r);
+static void _http_response_destroy_kv(gpointer key, gpointer value,
+                                      gpointer user_data);
+
+static BR_PRT_STATUS _parse_http_headers(BrHttpResponse* h_resp, char* l_begin,
+                                         char* l_end);
+static bool _parse_http_header(GHashTable* headers, char* l_begin, char* l_end);
 
 BR_PRT_STATUS br_http_response_new(BrSession* s, BrHttpResponse* h_resp)
 {
     MEMMOVE(s->req, h_resp->req);
-    char status_code_str[255];
+    char status_msg[255];
     char* l_begin = s->resp;
-    char* l_end = s->resp;
+    char* l_end;
     if ((l_end = strstr(l_begin, "\r\n")) != NULL) {
         float _v;
-        if (sscanf(l_begin, "HTTP/%f %d %s\r\n", &_v, &h_resp->status_code,
-                   status_code_str)
-            != 3) {
+        if (sscanf(l_begin, "HTTP/%f %d %s\r\n", &_v, &h_resp->status,
+                   status_msg)
+            != 3)
             return ERROR(BR_PRT_HTTP_NO_STATUS_CODE);
-        }
         l_begin = l_end + 2;
     } else
         return ERROR(BR_PRT_HTTP_NO_STATUS_CODE);
+    return _parse_http_headers(h_resp, l_begin, l_end);
+}
+
+static BR_PRT_STATUS _parse_http_headers(BrHttpResponse* r, char* l_begin,
+                                         char* l_end)
+{
     GHashTable* headers = g_hash_table_new(g_str_hash, g_str_equal);
+    size_t h_count = 0;
     while ((l_end = strstr(l_begin, "\r\n")) != NULL) {
         if (l_end == l_begin) {
-            h_resp->headers = headers;
-            h_resp->body = l_end + 2;
+            if (h_count) {
+                r->headers = headers;
+            } else {
+                g_hash_table_foreach(headers, _http_response_destroy_kv, NULL);
+                g_hash_table_destroy(headers);
+            }
+            r->body = l_end + 2;
             return BR_PRT_HTTP_OK;
         }
-        char* k = calloc(BR_HTTP_HEADER_SIZE / 4, sizeof(char));
-        char* v = calloc(BR_HTTP_HEADER_SIZE, sizeof(char));
-        char* delimeter;
-        if ((delimeter = strchr(l_begin, ':')) != NULL) {
-            memcpy(k, l_begin, delimeter - l_begin);
-            k[delimeter - l_begin] = 0;
-            memcpy(v, delimeter + 2, l_end - delimeter - 2);
-            v[l_end - delimeter - 2] = 0;
-            g_hash_table_insert(headers, k, v);
-        } else {
-            WARN(BR_PRT_HTTP_INVALID_HEADER);
-            free(k);
-            free(v);
-        }
+        h_count += _parse_http_header(headers, l_begin, l_end);
         l_begin = l_end + 2;
     }
+    g_hash_table_destroy(headers);
     return ERROR(BR_PRT_HTTP_INVALID_HEADERS);
+}
+
+static bool _parse_http_header(GHashTable* headers, char* l_begin, char* l_end)
+{
+    char* k = calloc(BR_HTTP_HEADER_SIZE / 4, sizeof(char));
+    char* v = calloc(BR_HTTP_HEADER_SIZE, sizeof(char));
+    char* delimeter;
+    if ((delimeter = strchr(l_begin, ':')) != NULL) {
+        memcpy(k, l_begin, delimeter - l_begin);
+        k[delimeter - l_begin] = 0;
+        memcpy(v, delimeter + 2, l_end - delimeter - 2);
+        v[l_end - delimeter - 2] = 0;
+        g_hash_table_insert(headers, k, v);
+        return true;
+    }
+    WARN(BR_PRT_HTTP_INVALID_HEADER);
+    free(k);
+    free(v);
+    return false;
 }
 
 static void _http_response_print_kv(gpointer key, gpointer value,

@@ -50,7 +50,7 @@ typedef enum {
 typedef struct {
     char* req;
     size_t req_s;
-    int status_code;
+    int status;
     GHashTable* headers;
     char* body;
     char* __full_text;
@@ -58,8 +58,8 @@ typedef struct {
 } BrHttpResponse;
 
 #define BrHttpResponse_unwrap(r)                                               \
-    "BrHttpResponse\n{status: %d\tfull_size: %ld\treq:\"%s\"}\n%s\n",            \
-        (r)->status_code, (r)->__full_text_s, (r)->req, (r)->body
+    "BrHttpResponse\n{status: %d\tfull_size: %ld\treq:\"%s\"}\n%s\n",          \
+        (r)->status, (r)->__full_text_s, (r)->req, (r)->body
 
 /**
  * Parses the data from the connection and converts it into a HttpResponse

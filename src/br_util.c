@@ -50,7 +50,7 @@ const char* to_abs_path(const char* uri, const char* request_path)
     if (!(is_null_terminated(uri, -1) && is_null_terminated(request_path, -1)))
         return NULL;
     static char r[MAX_URI_LENGTH];
-    if (strstr(request_path, "://") == NULL)
+    if (strstr(request_path, "://") != NULL)
         return request_path;
     const char* idx = request_path[0] != '/' ? request_path : request_path + 1;
     size_t uri_s = strlen(uri);
@@ -82,17 +82,21 @@ BR_PROTOCOL capture_protocol(const char* uri, int* start_addr)
         return BR_PROTOCOL_UNSUPPORTED;
     if (!strncmp("gemini", uri, 6)) {
         // gemini://
-        *start_addr = 9;
+        if (start_addr != NULL)
+            *start_addr = 9;
         return BR_PROTOCOL_GEMINI;
     } else if (!strncmp("https", uri, 5)) {
         // https://
-        *start_addr = 8;
+        if (start_addr != NULL)
+            *start_addr = 8;
         return BR_PROTOCOL_HTTPS;
     } else if (!strncmp("http", uri, 4)) {
-        *start_addr = 7;
+        if (start_addr != NULL)
+            *start_addr = 7;
         return BR_PROTOCOL_HTTP;
     } else if (!strncmp("gopher", uri, 6)) {
-        *start_addr = 9;
+        if (start_addr != NULL)
+            *start_addr = 9;
         return BR_PROTOCOL_GOPHER;
     }
     return BR_PROTOCOL_UNSUPPORTED;

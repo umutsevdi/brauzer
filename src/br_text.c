@@ -1,5 +1,4 @@
 #include "br_txt.h"
-#include <string.h>
 /**
  * Moves inside the given NULL terminated string until a non-space character
  * is found, returning its address */

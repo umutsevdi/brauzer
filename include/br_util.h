@@ -51,6 +51,7 @@ bool is_ip(const char* input);
 /* Removes all characters starting from the first ':' */
 void uri_strip(char* str);
 /* Tries to obtain the port from the URI and returns it.
+ * Removes the port from the URI string.
  * If the URI does not contain a port, returns -1 */
 int parse_port(const char* URI);
 /**
@@ -67,7 +68,7 @@ int parse_port(const char* URI);
  * addr will be 9, because that's where the domain starts('w')
  */
 BR_PROTOCOL capture_protocol(const char* uri, int* start_addr);
-/* Returns an absolute path to request. From the URI and the request path.
+/* Returns an absolute path to request. From the URI and the request path. If the request is already an absolute path, does nothing.
  * Returned string is a null terminated static char array */
 const char* to_abs_path(const char* uri, const char* request_path);
 /* Obtains a valid host name from given IP address */
