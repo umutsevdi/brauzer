@@ -13,9 +13,11 @@ various web protocols.
 
 ## What is Brauzer
 Brauzer is a simple web browser that can communicate through the following protocols.
+
 * HTTP/HTTPS
 * Gopher
 * Gemini
+
 It can currently parse Gopher and Gemini files as of 05/11/2023.
 I would like to build a GUI for the Brauzer in the future.
 
