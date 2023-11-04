@@ -37,7 +37,7 @@ typedef struct {
     char* URI;
 } BrGemtextItem;
 #define BrGemtextItem_unwrap(r)                                                \
-    "type:%5s\tURI:%-30s\t%s\n", BR_GEMTXT_S((r)->type),                  \
+    "|type:%5s|\tURI:%-30s|\t%s\n", BR_GEMTXT_S((r)->type),                  \
         (r)->URI != NULL ? (r)->URI : "", (r)->line
 
 typedef struct {

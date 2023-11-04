@@ -167,6 +167,7 @@ void test_br_http_response_new_when_invalid_headers()
     BrHttpResponse r = {0};
     assert(br_http_response_new(&s, &r) == BR_PRT_HTTP_OK);
 }
+
 int main(void)
 {
     TEST(is_ip);
