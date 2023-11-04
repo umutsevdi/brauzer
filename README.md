@@ -16,8 +16,8 @@ Brauzer is a simple web browser that can communicate through the following proto
 * HTTP/HTTPS
 * Gopher
 * Gemini
-I would like to build a graphical user interface with GTK framework for this project.
 It can currently parse Gopher and Gemini files as of 05/11/2023.
+I would like to build a GUI for the Brauzer in the future.
 
 
 ## Demo Videos
@@ -30,13 +30,14 @@ It can currently parse Gopher and Gemini files as of 05/11/2023.
 ![Gopher](screenshot/gopher.GIF)
 
 <p id="installation">
+
 ### Installation
 
 Requirements: 
 * [OpenSSL](https://packages.debian.org/bookworm/openssl)
 * [libglib2.0-0](https://packages.debian.org/bookworm/libglib2.0-0)
 
- Current version does not require the following packages, But the future versions will require:
+ The current version does not require the following packages, But the future versions will require:
 
 * [libgtk-4](https://packages.debian.org/bookworm/libgtk-4-1)
 * [libadwaita](https://packages.debian.org/bookworm/libs/libadwaita-1-0)
@@ -54,7 +55,7 @@ Requirements:
 
 ### Status
 
-This project is currently work in progress.
+This project is currently a work in progress.
 #### To-do List:
 
 - [x] TCP Session Management
@@ -83,15 +84,15 @@ This project is currently work in progress.
         - [x] Parser
     - [ ] FTP/SFTP:
 
-## 5. License
+## License
 
-Distributed under the MIT License. See `LICENSE` for more information.
+Distributed under the GPL License. See `LICENSE` for more information.
 
 <p id="contact">
 
-## 6. Contact
+## Contact
 
-Feel free to contact me for any further information or suggestion.
+Feel free to contact me for any further information or suggestions.
 
 Project: [umutsevdi/brauzer](https://github.com/umutsevdi/brauzer)
 
